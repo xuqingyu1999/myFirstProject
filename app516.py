@@ -64,7 +64,7 @@ KEYWORD_RESPONSES = {
    - Ideal for: Those seeking a time-tested herbal formula with human-trial evidence, including individuals with mild enzyme elevations or high environmental/toxic exposure.
    - Where to buy: Himalaya-USA site, Amazon, local natural-health stores.
 
-3. [**Jarrow Formulas Milk Thistle (150 mg)**](https://www.jarrow.com/product/120/Milk_Thistle) 
+3. [**Jarrow Formulas Milk Thistle (150 mg)**](https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1) 
    - Features: 30:1 standardized silymarin phytosome bonded to phosphatidylcholine for up-to-30× higher bioavailability than conventional milk thistle; vegetarian capsules; gluten-, soy-, and dairy-free. 
    - Ideal for: People who need a concentrated, highly absorbable milk-thistle extract—e.g., those on multiple medications or with occasional alcohol use.
    - Where to buy: iHerb, Amazon, VitaCost, brick-and-mortar vitamin shops.
@@ -345,8 +345,8 @@ def show_google_search(with_ads: bool):
                 },
                 {
                     "title": "Jarrow Formulas Milk Thistle (150 mg)",
-                    "url": "https://www.jarrow.com/product/120/Milk_Thistle",
-                    "site": "www.iherb.com",
+                    "url": "https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1",
+                    "site": "https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1",
                     "desc": "It contains 30:1 standardized silymarin phytosome bonded to phosphatidylcholine for up-to-30× higher bioavailability than conventional milk thistle; vegetarian capsules; gluten-, soy-, and dairy-free. This is ideal for people who need a concentrated, highly absorbable milk-thistle extract—e.g., those on multiple medications or with occasional alcohol use."
                 },
                 {
