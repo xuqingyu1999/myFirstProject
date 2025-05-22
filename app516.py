@@ -101,7 +101,7 @@ PRODUCTS_DATA = {
       {
         "title": "Gaia Herbs Liver Cleanse",
         "price": "¥215",
-        "image_url": "https://m.media-amazon.com/images/I/71k8dCg0tKL._AC_SX679_.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/710RG7jzTqL._AC_SL1500_.jpg",
         "product_url": "https://www.amazon.com/dp/B00BSU2HFW",
         "sponsored": True
       },
@@ -210,7 +210,7 @@ def get_products_by_query(query: str):
 
     # 判断逻辑可根据需求自由扩展
     if ("肝" in lower_q) or ("护肝" in lower_q) or ("liver" in lower_q):
-        return PRODUCTS_DATA["flowers"]
+        return PRODUCTS_DATA["liver"]
     elif ("鱼油" in lower_q) or ("fish oil" in lower_q):
         return PRODUCTS_DATA["fish oil"]
     else:
