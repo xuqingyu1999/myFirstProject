@@ -333,7 +333,7 @@ def show_google_search(with_ads: bool):
             return [
                 {
                     "title": "Thorne Liver Cleanse",
-                    "url": "(https://www.amazon.com/Thorne-Research-Cleanse-Detoxification-Capsules/dp/B07978NYC5)",
+                    "url": "https://www.amazon.com/Thorne-Research-Cleanse-Detoxification-Capsules/dp/B07978NYC5",
                     "site": "https://www.amazon.com/Thorne-Research-Cleanse-Detoxification-Capsules/dp/B07978NYC5",
                     "desc": "Professional-grade formula that combines milk thistle (125 mg silymarin), burdock, chicory, berberine, and other botanicals; NSF-Certified for Sport®; produced in a GMP-compliant U.S. facility. This is ideal for ndividuals looking for a broad-spectrum botanical detox blend—especially those who value third-party testing and athlete-friendly certifications."
                 },
