@@ -10,6 +10,8 @@ import json
 import random
 import streamlit as st
 from openai import OpenAI
+import base64
+from pathlib import Path
 
 ############################################
 # step 0: 页面 & DeepSeek 客户端初始化
@@ -286,7 +288,7 @@ def show_google_search(with_ads: bool):
     当 with_ads=True 时，往搜索结果里插入 sponsor 或标记 sponsored
     """
 
-    st.title("Google search")
+    st.title("Querya search")
     st.write(f"Current Version：{'with ads' if with_ads else 'without ads'}")
 
     # 演示：模拟的搜索结果(伪)函数
@@ -370,12 +372,26 @@ def show_google_search(with_ads: bool):
             ]
 
     # -- 搜索框（仿Google的Logo & 布局） --
-    st.markdown("""
-    <div style="text-align:center; margin-top:20px;">
-      <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png"
-           style="height:40px;" />
-    </div>
-    """, unsafe_allow_html=True)
+    # st.markdown("""
+    # <div style="text-align:center; margin-top:20px;">
+    #   <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png"
+    #        style="height:40px;" />
+    # </div>
+    # """, unsafe_allow_html=True)
+
+    def to_base64(path: str) -> str:
+        return base64.b64encode(Path(path).read_bytes()).decode()
+
+    logo_b64 = to_base64("querya.png")  # adjust filename / path
+
+    st.markdown(
+        f"""
+        <div style="text-align:center; margin-top:20px;">
+            <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     query = st.text_input("", placeholder="Input Key Words for Search Here")
     if st.button("Search"):
@@ -384,7 +400,7 @@ def show_google_search(with_ads: bool):
         st.write("**Search Results: **")
         for i, item in enumerate(results):
             st.markdown(f"""
-        <div style="margin-bottom:20px;">
+        <div style="margin-bottom:30px;">
           <div style="font-size:22px; line-height:1.4;">
             <a href="{item['url']}" target="_blank" style=" text-decoration:none;">
               {item['title']}
