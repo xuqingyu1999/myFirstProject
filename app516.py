@@ -397,7 +397,7 @@ def show_google_search(with_ads: bool):
     if st.button("Search"):
         results = do_fake_google_search(query)
         st.write("---")
-        st.write("**Search Results: **")
+        st.write("**Search Results:**")
         for i, item in enumerate(results):
             st.markdown(f"""
         <div style="margin-bottom:30px;">
