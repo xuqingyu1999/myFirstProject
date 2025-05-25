@@ -381,7 +381,7 @@ def show_google_search(with_ads: bool):
     """
 
     st.title("Querya search")
-    st.write(f"Current Version：{'with ads' if with_ads else 'without ads'}")
+    # st.write(f"Current Version：{'with ads' if with_ads else 'without ads'}")
 
     # 演示：模拟的搜索结果(伪)函数
     def do_fake_google_search(query):

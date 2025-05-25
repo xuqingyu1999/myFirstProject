@@ -244,7 +244,7 @@ def show_deepseek_recommendation(with_ads: bool):
     """
 
     st.title("Querya Rec")
-    st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
+    # st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
 
     # Initialize conversation history if not present
     if "history" not in st.session_state:
