@@ -1,1 +1,2 @@
 openai==1.76.0
+streamlit_analytics2
