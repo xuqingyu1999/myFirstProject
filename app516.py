@@ -22,26 +22,27 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 import json
 
-# def get_credentials_from_secrets():
-#     # 还原成 dict
-#     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
-#     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-#     return creds_dict
+def get_credentials_from_secrets():
+    # 还原成 dict
+    creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    return creds_dict
 
-def save_to_gsheet(data: dict):
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("streamlit_app.json", scope)
-    client = gspread.authorize(creds)
-    sheet = client.open("Click History").sheet1
-    sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
-# def save_to_gsheet(data):
-#     creds = ServiceAccountCredentials.from_json_keyfile_dict(
-#     get_credentials_from_secrets(),
-#     scopes=["https://www.googleapis.com/auth/spreadsheets"]
-#     )
+# def save_to_gsheet(data: dict):
+#     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+#     creds = ServiceAccountCredentials.from_json_keyfile_name("streamlit_app.json", scope)
 #     client = gspread.authorize(creds)
 #     sheet = client.open("Click History").sheet1
 #     sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
+
+def save_to_gsheet(data):
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    get_credentials_from_secrets(),
+    scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    )
+    client = gspread.authorize(creds)
+    sheet = client.open("Click History").sheet1
+    sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
