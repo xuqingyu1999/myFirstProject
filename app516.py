@@ -17,7 +17,15 @@ import streamlit.components.v1 as components
 import pandas as pd
 # 1) Import streamlit_analytics2
 import streamlit_analytics2 as streamlit_analytics
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
+def save_to_gsheet(data: dict):
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("streamlit_app.json", scope)
+    client = gspread.authorize(creds)
+    sheet = client.open("Click History").sheet1
+    sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
@@ -334,17 +342,18 @@ def record_link_click_and_open(label, url, link_type):
         }
 
         # 读取已有数据（如果有）
-        if os.path.exists(click_log_file):
-            df_existing = pd.read_csv(click_log_file)
-        else:
-            df_existing = pd.DataFrame(columns=["id", "timestamp", "type", "title", "url"])
+        # if os.path.exists(click_log_file):
+        #     df_existing = pd.read_csv(click_log_file)
+        # else:
+        #     df_existing = pd.DataFrame(columns=["id", "timestamp", "type", "title", "url"])
 
         # 新数据转换为 DataFrame 并追加
-        df_new = pd.DataFrame([click_data])
-        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+        # df_new = pd.DataFrame([click_data])
+        # df_combined = pd.concat([df_existing, df_new], ignore_index=True)
 
         # 保存回 CSV
-        df_combined.to_csv(click_log_file, index=False)
+        # df_combined.to_csv(click_log_file, index=False)
+        save_to_gsheet(click_data)
 
         # 打开链接
         components.html(f"""
