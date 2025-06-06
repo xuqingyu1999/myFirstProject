@@ -38,7 +38,10 @@ def get_credentials_from_secrets():
 def save_to_gsheet(data):
     creds = ServiceAccountCredentials.from_json_keyfile_dict(
     get_credentials_from_secrets(),
-    scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+        ]
     )
     client = gspread.authorize(creds)
     sheet = client.open("Click History").sheet1
