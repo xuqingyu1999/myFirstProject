@@ -285,41 +285,73 @@ def open_button_link(link):
     st.markdown(js_code, unsafe_allow_html=True)
 
 
+# def record_link_click_and_open(label, url, link_type):
+#     """
+#         When button is clicked:
+#         - record to session + CSV
+#         - trigger browser to open URL in new tab
+#         """
+#     click_log_file = "click_history.csv"
+
+#     if st.button(label, key=label):
+#         # 1. 记录点击
+#         click_data = {
+#             "id": st.session_state.prolific_id,
+#             "timestamp": datetime.now().isoformat(),
+#             "type": link_type,
+#             "title": label,
+#             "url": url
+#         }
+
+#         if "click_history" not in st.session_state:
+#             st.session_state.click_history = []
+#         st.session_state.click_history.append(click_data)
+
+#         os.makedirs(os.path.dirname(click_log_file) or ".", exist_ok=True)
+#         with open(click_log_file, mode='a', newline='', encoding='utf-8') as file:
+#             writer = csv.DictWriter(file, fieldnames=["id","timestamp", "type", "title", "url"])
+#             if file.tell() == 0:
+#                 writer.writeheader()
+#             writer.writerow(click_data)
+
+#         # 2. 真正打开链接（用组件注入脚本，保证能执行）
+#         components.html(f"""
+#                 <script>
+#                     window.open("{url}", "_blank");
+#                 </script>
+#             """, height=0)
 def record_link_click_and_open(label, url, link_type):
-    """
-        When button is clicked:
-        - record to session + CSV
-        - trigger browser to open URL in new tab
-        """
     click_log_file = "click_history.csv"
 
     if st.button(label, key=label):
-        # 1. 记录点击
+        # 新点击记录
         click_data = {
-            "id": st.session_state.prolific_id,
-            "timestamp": datetime.now().isoformat(),
-            "type": link_type,
-            "title": label,
-            "url": url
+        "id": st.session_state.prolific_id,
+        "timestamp": datetime.now().isoformat(),
+        "type": link_type,
+        "title": label,
+        "url": url
         }
 
-        if "click_history" not in st.session_state:
-            st.session_state.click_history = []
-        st.session_state.click_history.append(click_data)
+        # 读取已有数据（如果有）
+        if os.path.exists(click_log_file):
+            df_existing = pd.read_csv(click_log_file)
+        else:
+            df_existing = pd.DataFrame(columns=["id", "timestamp", "type", "title", "url"])
 
-        os.makedirs(os.path.dirname(click_log_file) or ".", exist_ok=True)
-        with open(click_log_file, mode='a', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=["id","timestamp", "type", "title", "url"])
-            if file.tell() == 0:
-                writer.writeheader()
-            writer.writerow(click_data)
+        # 新数据转换为 DataFrame 并追加
+        df_new = pd.DataFrame([click_data])
+        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
 
-        # 2. 真正打开链接（用组件注入脚本，保证能执行）
+        # 保存回 CSV
+        df_combined.to_csv(click_log_file, index=False)
+
+        # 打开链接
         components.html(f"""
-                <script>
-                    window.open("{url}", "_blank");
-                </script>
-            """, height=0)
+        <script>
+        window.open("{url}", "_blank");
+        </script>
+        """, height=0)
 
 
 ############################################
