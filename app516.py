@@ -14,7 +14,7 @@ import re
 import time
 import csv
 import streamlit.components.v1 as components
-
+import pandas as pd
 # 1) Import streamlit_analytics2
 import streamlit_analytics2 as streamlit_analytics
 
