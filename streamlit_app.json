@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "sonorous-earth-435907-a1",
+  "private_key_id": "1221e8956fc4198b3c3d5217db659b2d00ec1d68",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDh0SgqEdrssTNn\nfDkLdduvA7ZkptmhQrpldzULQFMS3PZpvaIYHQO5O82205EJDZftAZ2dWXP3v3/E\nCqUR7HVwemTDWxCTfkxPoZIHx5DyUFE5x5AiwKJQ88kitGsEBzwok9lX9dbnQvOA\nw7hCwDWyf6xs9/JDVVWc6r/RK5BiiwrOynhdpBmMIHbkjB9it/BsUiYZYYrBpNSo\neWmi2LJbZzfVycBTfhJ5cpk4ORkkNDWxG6ghniTtXuWeBHxNzELFbQKCI947c3rp\nduiBagOv/nWQsK7/o4L+bQ2jy9JdLY9Ed2b/oA9yLwSbxyyvVH6lQB3o2kGx19uW\nSMT4t26NAgMBAAECggEAX1+mzonnBGPdGZ6KO1BmXfc78CvWK/lSX2tnIF7lF0jy\n2/snPHb4rSHYgxi9H2051vSBPMVcqO0dCdATIsxTV5Oh/i52hEzp7xIG6rk7e1Q3\n0ib6terVQ0qLj1hTAIsLufmj6LYgs2EAFkjTiIHEzCSHTyizjgO7GoC9ThtPqoZT\nC4pSunyCu2ju9kwgLKNgiZTNZtJG+TXrKu2Ffp3a5CDO0jeBZNCfliKW+ReG9CMv\nSWxFYDpg5CSxZRXp4aWAo90X+hTHru620Wm180R6rV9hdvNrPb1mogVuO6CTL+Ex\nMHegh405rFCEYy6MeFtOIq1QMJlLyhhAD0XYBvRdQwKBgQDwc1dU6UhYh6UNChHs\nc00iRNlRH/hDOWNAZyA5PgPXQd/w6UFTdpxA3gL4IAk4Ehnwx4olPmUxB7FJ6oqk\nhfPf9iTXL18CkUvfAJghRCD88N5ebpe4jtJK79PR601qVBeCQnsWV62GO7lw8kc9\nbQOiG5AUqWgC4Dhvm7yHbkbgVwKBgQDwa47AsG5oGK4E4NzehQrk+J6Uq994gkve\nlFSvhVnzE8KP06fLv0NOS8n/XqFCQ5YszflsKwlUd66tE6x2IdAyvZ6LZb2H127L\nS1dSoIiwwNq1PK3uF53cq87JIOP34/oMtwbC8zmbD/k9X9M0PdPjYJ+ws44LH8Yp\ny20tAFWJuwKBgDXxuoMLPzbVX7sYKkNA7uokRhkEMh9qzZCSUlFlT1lIpyQWQJio\nAJAw/ruJ/Gd+8CDrs1t9rxgb4LNzkh0tDDSPtV4te4RI8puaN4cnELuOkmTfLNyz\n9gvn2D69KoYTTZ7kqVau3vhBh+4F/OOUBH+m7WElTHdwtFiduOMtY2tLAoGBAKwN\n/UJOwSSEDP12wvoIMky81BhHjAzdCljGxHg8MawwxvtRGHNKdGty96Nm4HbgkXeN\nDGPpxKqLYBmCy9hayHmXk//klqfBeAvK5jo+orQDwEEVpM+QXSwQVFNB04OSxl8V\nGKSpld8vpknS6v4nBR1jB8VYKl4xpgpBB+e9pnmDAoGAD8sSCUHejhCQhY3OPE79\nLeFV3JySxRbLUhDsqV1Z1HOPyjOfmPJjWB5qd9EtvkxPJB/dDaI1fXlQRP+gbGHE\nJTWBJHRAp7eltfgJrljL6rLOXAQH0xEREswjas7OxcE1YvNUVtK5TatYWMpQCpAi\nZntJWCmIAHQOxt8BKxdKxWU=\n-----END PRIVATE KEY-----\n",
+  "client_email": "streamlit-click-logger@sonorous-earth-435907-a1.iam.gserviceaccount.com",
+  "client_id": "113829506494814206491",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-click-logger%40sonorous-earth-435907-a1.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
