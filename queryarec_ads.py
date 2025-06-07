@@ -44,7 +44,7 @@ def save_to_gsheet(data):
         ]
     )
     client = gspread.authorize(creds)
-    sheet = client.open("QRec Ads").sheet2
+    sheet = client.open("QRec Ads").sheet1
     sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
 ############################################
 # Step 0: Page config & DeepSeek client
@@ -469,7 +469,7 @@ variant = 2 #st.session_state.variant
 ############################################
 def show_deepseek_recommendation(with_ads: bool):
     st.title("Querya Rec")
-    st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
+    # st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
 
     if "history" not in st.session_state:
         st.session_state.history = [
