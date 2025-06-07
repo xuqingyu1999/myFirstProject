@@ -350,7 +350,20 @@ def open_button_link(link):
 #             """, height=0)
 def record_link_click_and_open(label, url, link_type):
     click_log_file = "click_history.csv"
+    if label == 'end':
+        if st.sidebar.button("Finish / End Session"):
+            st.success("Session ended. Thank you!")
 
+            click_data = {
+                "id": st.session_state.prolific_id,
+                "timestamp": datetime.now().isoformat(),
+                "type": link_type,
+                "title": label,
+                "url": url
+            }
+            save_to_gsheet(click_data)
+            st.stop()
+            
     if st.button(label, key=label):
         # 新点击记录
         click_data = {
@@ -724,7 +737,8 @@ def main():
             st.session_state.click_history = []
 
         # (D) Provide an "End Session" button in the sidebar
-        # st.sidebar.title("Menu")
+        st.sidebar.title("Menu")
+        record_link_click_and_open(label='end',url=' ',link_type='end')
         # if st.sidebar.button("Finish / End Session"):
         #     # Gather data
         #     data_to_save = {
