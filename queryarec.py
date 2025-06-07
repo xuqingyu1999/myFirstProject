@@ -469,7 +469,7 @@ variant = 1 #st.session_state.variant
 ############################################
 def show_deepseek_recommendation(with_ads: bool):
     st.title("Querya Rec")
-    st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
+    # st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
 
     if "history" not in st.session_state:
         st.session_state.history = [
