@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-# app.py
 import os
 import json
 import random
@@ -12,17 +8,134 @@ import streamlit as st
 from openai import OpenAI
 import base64
 from pathlib import Path
+from datetime import datetime
+import math
+import re
+import time
+import csv
+import streamlit.components.v1 as components
+import pandas as pd
+# 1) Import streamlit_analytics2
+import streamlit_analytics2 as streamlit_analytics
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
+import json
+
+def get_credentials_from_secrets():
+    # 还原成 dict
+    creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    return creds_dict
+
+# def save_to_gsheet(data: dict):
+#     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+#     creds = ServiceAccountCredentials.from_json_keyfile_name("streamlit_app.json", scope)
+#     client = gspread.authorize(creds)
+#     sheet = client.open("Click History").sheet1
+#     sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
+
+def save_to_gsheet(data):
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    get_credentials_from_secrets(),
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+        ]
+    )
+    client = gspread.authorize(creds)
+    sheet = client.open("Click History").sheet2
+    sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
 ############################################
-# step 0: 页面 & DeepSeek 客户端初始化
+# Step 0: Page config & DeepSeek client
 ############################################
 st.set_page_config(page_title="🛒 DeepSeek 实验", layout="wide")
 
 API_KEY = os.getenv("DEEPSEEK_API_KEY") or "sk-ce6eb3e9045c4110862945af28f4794e"
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com/v1")
 
+# Record the app's start time if not set
+if "start_time" not in st.session_state:
+    st.session_state.start_time = datetime.now().isoformat()
+
 ############################################
-# 新增：关键词触发的「预设答复」字典，
+# 1) Custom CSS to style all st.buttons like links
+############################################
+LINK_BUTTON_CSS = """
+<style>
+/* Turn all Streamlit buttons into link-style text */
+div.stButton > button {
+    background: none!important;
+    color: #0645AD!important;
+    border: none!important;
+    padding: 0!important;
+    font-size: 16px!important;
+    text-decoration: underline!important;
+    cursor: pointer!important;
+}
+div.stButton > button:hover {
+    color: #0366d6!important;
+}
+</style>
+"""
+st.markdown(LINK_BUTTON_CSS, unsafe_allow_html=True)
+
+############################################
+# 2) Regex-based parser for [Title](URL) links in LLM text
+############################################
+def parse_markdown_links(text: str):
+    """
+    Finds all [Label](URL) patterns in 'text'.
+    Returns a list of segments, e.g.:
+      [{"type": "text", "content": "some text"},
+       {"type": "link", "label": "Nordic Naturals", "url": "..."},
+       ...]
+    """
+    pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+    segments = []
+    last_end = 0
+
+    for match in re.finditer(pattern, text):
+        start, end = match.span()
+        if start > last_end:
+            # text before this link
+            segments.append({
+                "type": "text",
+                "content": text[last_end:start]
+            })
+        link_label = match.group(1)
+        link_url = match.group(2)
+        segments.append({
+            "type": "link",
+            "label": link_label,
+            "url": link_url
+        })
+        last_end = end
+
+    if last_end < len(text):
+        # leftover text after last link
+        segments.append({
+            "type": "text",
+            "content": text[last_end:]
+        })
+
+    return segments
+
+def display_parsed_markdown(text: str, link_type="deepseek"):
+    """
+    Splits 'text' into normal text vs. [Title](URL) links,
+    then displays them with st.markdown for text,
+    and record_link_click_and_open for links.
+    """
+    segments = parse_markdown_links(text)
+    for seg in segments:
+        if seg["type"] == "text":
+            st.markdown(seg["content"])
+        elif seg["type"] == "link":
+            record_link_click_and_open(seg["label"], seg["url"], link_type)
+
+############################################
+# 3) Predefined replies
 ############################################
 KEYWORD_RESPONSES = {
     # 键写关键词，值写你想直接返回的内容
@@ -60,22 +173,22 @@ KEYWORD_RESPONSES = {
            - Features: Professional-grade formula that combines milk thistle (125 mg silymarin), burdock, chicory, berberine, and other botanicals; NSF-Certified for Sport®; produced in a GMP-compliant U.S. facility. 
            - Ideal for: Individuals looking for a broad-spectrum botanical detox blend—especially those who value third-party testing and athlete-friendly certifications.
            - Where to buy: Thorne.com, iHerb, Amazon Global.
-        
+
         2. [**Himalaya LiverCare (Liv 52 DS)**](https://www.amazon.com.be/-/en/Himalaya-Liv-52-DS-3-Pack/dp/B09MF88N71) 
            - Features: Clinically studied Ayurvedic blend (capers, chicory, black nightshade, arjuna, yarrow, etc.) shown to improve Child-Pugh scores and reduce ALT/AST in liver-compromised patients. 
            - Ideal for: Those seeking a time-tested herbal formula with human-trial evidence, including individuals with mild enzyme elevations or high environmental/toxic exposure.
            - Where to buy: Himalaya-USA site, Amazon, local natural-health stores.
-        
+
         3. [**Jarrow Formulas Milk Thistle (150 mg)**](https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1) 
            - Features: 30:1 standardized silymarin phytosome bonded to phosphatidylcholine for up-to-30× higher bioavailability than conventional milk thistle; vegetarian capsules; gluten-, soy-, and dairy-free. 
            - Ideal for: People who need a concentrated, highly absorbable milk-thistle extract—e.g., those on multiple medications or with occasional alcohol use.
            - Where to buy: iHerb, Amazon, VitaCost, brick-and-mortar vitamin shops.
-        
+
         4. [**NOW Foods Liver Refresh™**](https://www.amazon.com/Liver-Refresh-Capsules-NOW-Foods/dp/B001EQ92VW?th=1) 
            - Features: Synergistic blend of milk thistle, N-acetyl cysteine (NAC), methionine, and herbal antioxidants; non-GMO Project Verified and GMP-qualified. 
            - Ideal for: Individuals wanting comprehensive antioxidant support—such as frequent travelers, people with high oxidative stress, or those following high-protein diets.
            - Where to buy: NOWFoods.com, Amazon, iHerb, Whole Foods Market.
-        
+
         5. [**Nutricost TUDCA 250 mg**](https://www.amazon.com/Nutricost-Tudca-250mg-Capsules-Tauroursodeoxycholic/dp/B01A68H2BA?th=1) 
            - Features: Pure tauroursodeoxycholic acid (TUDCA) at 250 mg per veggie capsule; non-GMO, soy- and gluten-free; 3rd-party ISO-accredited lab tested; made in an FDA-registered, GMP facility. 
            - Ideal for: Advanced users seeking bile-acid–based cellular protection—popular among those with cholestatic or high-fat-diet concerns.
@@ -86,20 +199,16 @@ KEYWORD_RESPONSES = {
     # "shipping": "标准配送 48 h 内发货，全国包邮。",
 }
 
-
 def get_predefined_response(user_text: str):
-    """命中关键词就返回预设答复，否则返回 None"""
     lower = user_text.lower()
     for kw, reply in KEYWORD_RESPONSES.items():
         if kw.lower() in lower:
             return reply
     return None
 
-
 ############################################
-# 商品/广告数据
+# 4) Sponsored Product Data + Layout
 ############################################
-# 这里可以继续添加更多商品类型
 PRODUCTS_DATA = {
     "liver": [
         {
@@ -178,112 +287,220 @@ PRODUCTS_DATA = {
     ]
 }
 
+############################################
+# 5) Two-phase approach for links
+############################################
+def open_pending_link():
+    """If st.session_state.pending_link is set, open it in a new tab, then clear."""
+    if "pending_link" in st.session_state and st.session_state["pending_link"]:
+        target_url = st.session_state["pending_link"]
+        st.session_state["pending_link"] = None
 
+        # Possibly blocked if user hasn't allowed popups:
+        js_code = f"""
+        <script>
+            window.open("{target_url}", "_blank");
+        </script>
+        """
+        st.markdown(js_code, unsafe_allow_html=True)
+
+def open_button_link(link):
+    js_code = f"""
+            <script>
+                window.open("{link}", "_blank");
+            </script>
+            """
+    st.markdown(js_code, unsafe_allow_html=True)
+
+
+# def record_link_click_and_open(label, url, link_type):
+#     """
+#         When button is clicked:
+#         - record to session + CSV
+#         - trigger browser to open URL in new tab
+#         """
+#     click_log_file = "click_history.csv"
+
+#     if st.button(label, key=label):
+#         # 1. 记录点击
+#         click_data = {
+#             "id": st.session_state.prolific_id,
+#             "timestamp": datetime.now().isoformat(),
+#             "type": link_type,
+#             "title": label,
+#             "url": url
+#         }
+
+#         if "click_history" not in st.session_state:
+#             st.session_state.click_history = []
+#         st.session_state.click_history.append(click_data)
+
+#         os.makedirs(os.path.dirname(click_log_file) or ".", exist_ok=True)
+#         with open(click_log_file, mode='a', newline='', encoding='utf-8') as file:
+#             writer = csv.DictWriter(file, fieldnames=["id","timestamp", "type", "title", "url"])
+#             if file.tell() == 0:
+#                 writer.writeheader()
+#             writer.writerow(click_data)
+
+#         # 2. 真正打开链接（用组件注入脚本，保证能执行）
+#         components.html(f"""
+#                 <script>
+#                     window.open("{url}", "_blank");
+#                 </script>
+#             """, height=0)
+def record_link_click_and_open(label, url, link_type):
+    click_log_file = "click_history.csv"
+
+    if st.button(label, key=label):
+        # 新点击记录
+        click_data = {
+        "id": st.session_state.prolific_id,
+        "timestamp": datetime.now().isoformat(),
+        "type": link_type,
+        "title": label,
+        "url": url
+        }
+
+        # 读取已有数据（如果有）
+        # if os.path.exists(click_log_file):
+        #     df_existing = pd.read_csv(click_log_file)
+        # else:
+        #     df_existing = pd.DataFrame(columns=["id", "timestamp", "type", "title", "url"])
+
+        # 新数据转换为 DataFrame 并追加
+        # df_new = pd.DataFrame([click_data])
+        # df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+
+        # 保存回 CSV
+        # df_combined.to_csv(click_log_file, index=False)
+        save_to_gsheet(click_data)
+
+        # 打开链接
+        components.html(f"""
+        <script>
+        window.open("{url}", "_blank");
+        </script>
+        """, height=0)
+
+
+############################################
+# 6) Ads in a 5-column grid
+############################################
 def show_advertisements(relevant_products):
-    # 构建广告 HTML（每行最多5列，图片居中，去掉价格）
-    ad_html = """
-<div style="padding:16px; border:2px solid #ddd; border-radius:10px; background:#f9f9f9; margin-top:24px;">
-  <div style="position:relative; margin-bottom:12px;">
-    <div style="position:absolute; top:-10px; left:-10px; background-color:#e53935; color:white; font-size:14px; padding:6px 12px; border-radius:4px;">sponsored</div>
-  </div>
-  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;">
-"""
 
-    for product in relevant_products:
-        ad_html += f"""
-   <div style="flex: 1 1 calc(20% - 12px); max-width: calc(20% - 12px); border: 1px solid #ccc; border-radius: 8px; padding: 10px; box-sizing: border-box; text-align: center; background: white;">
-       <img src="{product['image_url']}" alt="{product['title']}" style="width:100%; max-height:120px; object-fit: contain; margin-bottom: 8px;" />
-       <a href="{product['product_url']}" target="_blank" style="font-weight:600; text-decoration:none; color:#0366d6; font-size:14px; display:block;">{product['title']}</a>
-    </div>
-"""
+    with st.container(border=True):
+        st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
 
-    ad_html += """
-  </div>
-</div>
-"""
+        st.markdown(
+            """
+              <div style="position:absolute; top:-14px; left:-14px; background-color:#e53935; color:white; font-size:14px; padding:6px 12px; border-radius:4px;">
+                sponsored
+              </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+        n = len(relevant_products)
+        col_count = 5
+        rows = math.ceil(n / col_count)
 
-    # 正确渲染广告区域
-    st.markdown(ad_html, unsafe_allow_html=True)
+        for r in range(rows):
+            row_cols = st.columns(col_count, gap="small")
+            for c in range(col_count):
+                idx = r * col_count + c
+                if idx >= n:
+                    break
+                product = relevant_products[idx]
+                with row_cols[c]:
+                    # st.markdown(
+                    #     """
+                    #     <div style="
+                    #       border:1px solid #ccc;
+                    #       border-radius:8px;
+                    #       padding:10px;
+                    #       background:white;
+                    #       text-align:left;
+                    #       box-sizing:border-box;
+                    #       margin-bottom:12px;
+                    #       display:flex;
+                    #       align-items:center;">
+                    #     """,
+                    #     unsafe_allow_html=True
+                    # )
 
+                    st.markdown(f"""
+                    <div style="flex-shrink:0; margin-right:8px;">
+                      <img src="{product['image_url']}" 
+                           style="width:80px; height:80px; object-fit:contain;" />
+                    </div>
+                    <div style="display:flex; flex-direction:column; justify-content:center;">
+                    """, unsafe_allow_html=True)
 
+                    record_link_click_and_open(
+                        label=product["title"],
+                        url=product["product_url"],
+                        link_type="ad"
+                    )
+                    st.markdown("</div></div>", unsafe_allow_html=True)
+
+        # st.markdown("</div>", unsafe_allow_html=True)
+
+############################################
+# 7) Query -> relevant products
+############################################
 def get_products_by_query(query: str):
-    """
-    根据用户输入的query，判断关键词并返回对应的商品列表。
-    例如包含'花'/'鲜花'就返回flowers，包含'鱼油'返回fishoil，否则返回空或默认。
-    """
-    lower_q = query.lower()  # 转小写，方便关键词匹配
-
-    # 判断逻辑可根据需求自由扩展
+    lower_q = query.lower()
     if ("肝" in lower_q) or ("护肝" in lower_q) or ("liver" in lower_q):
         return PRODUCTS_DATA["liver"]
     elif ("鱼油" in lower_q) or ("fish oil" in lower_q):
         return PRODUCTS_DATA["fish oil"]
     else:
-        # 如果没有匹配到，可以返回空或默认商品
         return []
 
-
 ############################################
-# step 2: 随机分流 variant=1..4
+# Step 2: random "variant"
 ############################################
 if "variant" not in st.session_state:
     st.session_state.variant = random.randint(1, 4)
-variant = 2
-
+variant = 2 #st.session_state.variant
 
 ############################################
-# step 3: DeepSeek 推荐场景（改）
+# 8) DeepSeek Recommendation Flow
 ############################################
 def show_deepseek_recommendation(with_ads: bool):
-    """
-    Displays a chat-like interface in Streamlit for user queries
-    and responses from a language model. Optionally includes ads.
-
-    - First message is typed via a text_input (in the middle).
-    - Then we rerun, switch to a pinned st.chat_input, and *then* show the LLM response.
-    """
-
     st.title("Querya Rec")
-    # st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
+    st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
 
-    # Initialize conversation history if not present
     if "history" not in st.session_state:
         st.session_state.history = [
             ("system", "You are an e-commerce chat assistant who recommends products based on user needs.")
         ]
-
-    # Track whether the user has already submitted their FIRST message
     if "first_message_submitted" not in st.session_state:
         st.session_state.first_message_submitted = False
-
-    # If we have a pending first message that hasn't been processed
-    # We'll use it after the rerun to get the LLM response
     if "pending_first_message" not in st.session_state:
         st.session_state.pending_first_message = None
+    if "current_ads" not in st.session_state:
+        st.session_state.current_ads = []
 
-    # ---------------------------------------------------------
-    # Display existing conversation (except system messages)
-    # ---------------------------------------------------------
+    # Display conversation so far
     for role, content in st.session_state.history:
         if role == "system":
             continue
-        st.chat_message(role).write(content)
+        if role == "assistant":
+            with st.chat_message("assistant"):
+                display_parsed_markdown(content, link_type="deepseek")
+        else:
+            st.chat_message(role).write(content)
 
-    # ---------------------------------------------------------
-    # 1) If there's a pending first message (from a previous run),
-    #    handle it now by calling the LLM/predefined response.
-    # ---------------------------------------------------------
+    # If we have a pending first message
     if st.session_state.first_message_submitted and st.session_state.pending_first_message:
         user_first_input = st.session_state.pending_first_message
-        st.session_state.pending_first_message = None  # Clear it so we don't repeat
+        st.session_state.pending_first_message = None
 
-        # Now we actually process the first message
-        # (We do the LLM call *after* the rerun)
         predefined = get_predefined_response(user_first_input)
-        if predefined is not None:
+        if predefined:
             assistant_text = predefined
         else:
-            # Otherwise, call the LLM / DeepSeek
             resp = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": r, "content": c} for r, c in st.session_state.history],
@@ -292,65 +509,45 @@ def show_deepseek_recommendation(with_ads: bool):
             )
             assistant_text = resp.choices[0].message.content
 
-        # Add the assistant response to the history
         st.session_state.history.append(("assistant", assistant_text))
-        st.chat_message("assistant").write(assistant_text)
 
-        # Show ads if desired
+        with st.chat_message("assistant"):
+            display_parsed_markdown(assistant_text, link_type="deepseek")
+
         if with_ads:
             prods = get_products_by_query(user_first_input)
-            if prods:
-                show_advertisements(prods)
+            st.session_state.current_ads = prods
 
-    # ---------------------------------------------------------
-    # 2) If first message not yet submitted, show a text_input
-    #    in the middle for the FIRST user prompt.
-    # ---------------------------------------------------------
+    # Show current ads
+    if st.session_state.current_ads:
+        show_advertisements(st.session_state.current_ads)
+
+    # If first message not yet
     if not st.session_state.first_message_submitted:
-        # st.write("**Please enter your first message:**")
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            user_first_input = st.text_input("**Please enter your message:**", key="first_input_box")
+            user_first_input = st.text_input("**Please enter your message:**")
 
-        # If the user has typed something in the first input
         if user_first_input:
-            # Add the user's message to the history so we can display it
             st.session_state.history.append(("user", user_first_input))
-
-            # Show the message now in the chat
             st.chat_message("user").write(user_first_input)
-
-            # Mark that the user has submitted the first message
             st.session_state.first_message_submitted = True
-
-            # Store the user input in pending_first_message
-            # We'll do the LLM call AFTER the rerun
             st.session_state.pending_first_message = user_first_input
-
-            # Force a re-run so that we skip this text_input & switch to pinned chat_input
             st.rerun()
-
-        # Stop here so we don't show the pinned chat_input in the same render
         return
 
-    # ---------------------------------------------------------
-    # 3) After first message, we use the pinned st.chat_input
-    #    for SUBSEQUENT messages (like a normal chat).
-    # ---------------------------------------------------------
+    # Subsequent messages
     user_input = st.chat_input("Input message and press enter…")
     if not user_input:
         return
 
-    # Add user message to history and display
     st.session_state.history.append(("user", user_input))
     st.chat_message("user").write(user_input)
 
-    # Check if there's a predefined response
     predefined = get_predefined_response(user_input)
-    if predefined is not None:
+    if predefined:
         assistant_text = predefined
     else:
-        # Otherwise, call the LLM
         resp = client.chat.completions.create(
             model="deepseek-chat",
             messages=[{"role": r, "content": c} for r, c in st.session_state.history],
@@ -359,34 +556,26 @@ def show_deepseek_recommendation(with_ads: bool):
         )
         assistant_text = resp.choices[0].message.content
 
-    # Output & store the assistant's response
     st.session_state.history.append(("assistant", assistant_text))
-    st.chat_message("assistant").write(assistant_text)
 
-    # Show ads if with_ads
+    with st.chat_message("assistant"):
+        display_parsed_markdown(assistant_text, link_type="deepseek")
+
     if with_ads:
         prods = get_products_by_query(user_input)
+        st.session_state.current_ads = prods
         if prods:
             show_advertisements(prods)
 
-
-
-
-
 ############################################
-# step 4: 仿 Google 场景（
+# 9) Google-like Search Flow
 ############################################
-
 def show_google_search(with_ads: bool):
-    """
-    当 with_ads=False 时，结果无广告
-    当 with_ads=True 时，往搜索结果里插入 sponsor 或标记 sponsored
-    """
-
     st.title("Querya search")
-    # st.write(f"Current Version：{'with ads' if with_ads else 'without ads'}")
 
-    # 演示：模拟的搜索结果(伪)函数
+    if "search_results" not in st.session_state:
+        st.session_state.search_results = []
+
     def do_fake_google_search(query):
         lower_q = query.lower()
 
@@ -466,67 +655,104 @@ def show_google_search(with_ads: bool):
                 {"title": "通用搜索结果2", "url": "https://example.com/result2"}
             ]
 
-    # -- 搜索框（仿Google的Logo & 布局） --
-    # st.markdown("""
-    # <div style="text-align:center; margin-top:20px;">
-    #   <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png"
-    #        style="height:40px;" />
-    # </div>
-    # """, unsafe_allow_html=True)
-
     def to_base64(path: str) -> str:
         return base64.b64encode(Path(path).read_bytes()).decode()
 
-    logo_b64 = to_base64("querya.png")  # adjust filename / path
-
-    st.markdown(
-        f"""
-        <div style="text-align:center; margin-top:20px;">
-            <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    try:
+        logo_b64 = to_base64("querya.png")
+        st.markdown(
+            f"""
+            <div style="text-align:center; margin-top:20px;">
+                <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    except:
+        st.write("Querya Search")
 
     query = st.text_input("", placeholder="Input Key Words for Search Here")
     if st.button("Search"):
         results = do_fake_google_search(query)
+        st.session_state.search_results = results
+        if with_ads:
+            prods = get_products_by_query(query)
+            st.session_state.current_ads = prods
+
+    # Show stored search results
+    if st.session_state.search_results:
         st.write("---")
         st.write("**Search Results:**")
-        for i, item in enumerate(results):
-            st.markdown(f"""
-        <div style="margin-bottom:30px;">
-          <div style="font-size:22px; line-height:1.4;">
-            <a href="{item['url']}" target="_blank" style=" text-decoration:none;">
-              {item['title']}
-            </a>
-          </div>
-          <div style="font-size:16px; margin-top:4px;">
-            {item.get('desc', '')}
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
-        # 如果带广告，就额外插入广告商品
-        if with_ads:
-            relevant_products = get_products_by_query(query)
-            if relevant_products:
-                show_advertisements(relevant_products)
 
+        for item in st.session_state.search_results:
+            record_link_click_and_open(item["title"], item["url"], link_type="organic")
+            if item["desc"]:
+                st.write(item["desc"])
+            st.write("---")
+
+    # Show ads if any
+    if with_ads:
+        if "current_ads" not in st.session_state:
+            st.session_state.current_ads = []
+        if st.session_state.current_ads:
+            show_advertisements(st.session_state.current_ads)
 
 ############################################
-# step 5: 主逻辑
+# Main App Flow
 ############################################
 def main():
-    if variant == 1:
-        show_deepseek_recommendation(with_ads=False)
-    elif variant == 2:
-        show_deepseek_recommendation(with_ads=True)
-    elif variant == 3:
-        show_google_search(with_ads=False)
-    elif variant == 4:
-        show_google_search(with_ads=True)
+    # 1) Start logging with streamlit_analytics2
+    #    Here we use default settings, so logs go in `./streamlit_analytics/`
+    with streamlit_analytics.track():
+        # (A) If we have a pending link from a previous run, open it now
+        open_pending_link()
 
+        # (B) Ask for Prolific ID if not set
+        if "prolific_id" not in st.session_state:
+            st.session_state.prolific_id = None
+
+        if st.session_state.prolific_id is None:
+            st.title("Welcome!")
+            pid = st.text_input("Please enter your Prolific ID:")
+            if pid:
+                st.session_state.prolific_id = pid
+                st.rerun()
+            st.stop()
+
+        # (C) Initialize click_history if not present
+        if "click_history" not in st.session_state:
+            st.session_state.click_history = []
+
+        # (D) Provide an "End Session" button in the sidebar
+        # st.sidebar.title("Menu")
+        # if st.sidebar.button("Finish / End Session"):
+        #     # Gather data
+        #     data_to_save = {
+        #         "prolific_id": st.session_state.prolific_id,
+        #         "variant": variant,
+        #         "start_time": st.session_state.start_time,
+        #         "ended_at": datetime.now().isoformat(),
+        #         "conversation_history": st.session_state.get("history", []),
+        #         "click_history": st.session_state.click_history,
+        #     }
+        #     with open("session_data.json", "w", encoding="utf-8") as f:
+        #         json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+        #
+        #     st.success("Session data saved to session_data.json. Thank you!")
+        #     st.stop()
+
+        # (E) Show whichever scenario is chosen
+        if variant == 1:
+            show_deepseek_recommendation(with_ads=False)
+        elif variant == 2:
+            show_deepseek_recommendation(with_ads=True)
+        elif variant == 3:
+            show_google_search(with_ads=False)
+        elif variant == 4:
+            show_google_search(with_ads=True)
+
+        # (F) Debug click history
+        # st.write("Debug Click History:", st.session_state.click_history)
 
 if __name__ == "__main__":
     main()
-
