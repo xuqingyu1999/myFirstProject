@@ -726,18 +726,7 @@ def main():
         # (D) Provide an "End Session" button in the sidebar
         st.sidebar.title("Menu")
         if st.sidebar.button("Finish / End Session"):
-        #     # Gather data
-        #     data_to_save = {
-        #         "prolific_id": st.session_state.prolific_id,
-        #         "variant": variant,
-        #         "start_time": st.session_state.start_time,
-        #         "ended_at": datetime.now().isoformat(),
-        #         "conversation_history": st.session_state.get("history", []),
-        #         "click_history": st.session_state.click_history,
-        #     }
-        #     with open("session_data.json", "w", encoding="utf-8") as f:
-        #         json.dump(data_to_save, f, ensure_ascii=False, indent=2)
-        #
+            record_link_click_and_open(label='end',url=' ',link_type='end')
             st.success("Session data saved to session_data.json. Thank you!")
             st.stop()
 
