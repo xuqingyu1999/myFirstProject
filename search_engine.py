@@ -363,37 +363,37 @@ def record_link_click_and_open(label, url, link_type):
             }
             save_to_gsheet(click_data)
             st.stop()
-            
-    if st.button(label, key=label):
-        # 新点击记录
-        click_data = {
-        "id": st.session_state.prolific_id,
-        "timestamp": datetime.now().isoformat(),
-        "type": link_type,
-        "title": label,
-        "url": url
-        }
-
-        # 读取已有数据（如果有）
-        # if os.path.exists(click_log_file):
-        #     df_existing = pd.read_csv(click_log_file)
-        # else:
-        #     df_existing = pd.DataFrame(columns=["id", "timestamp", "type", "title", "url"])
-
-        # 新数据转换为 DataFrame 并追加
-        # df_new = pd.DataFrame([click_data])
-        # df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-
-        # 保存回 CSV
-        # df_combined.to_csv(click_log_file, index=False)
-        save_to_gsheet(click_data)
-
-        # 打开链接
-        components.html(f"""
-        <script>
-        window.open("{url}", "_blank");
-        </script>
-        """, height=0)
+    else:
+        if st.button(label, key=label):
+            # 新点击记录
+            click_data = {
+            "id": st.session_state.prolific_id,
+            "timestamp": datetime.now().isoformat(),
+            "type": link_type,
+            "title": label,
+            "url": url
+            }
+    
+            # 读取已有数据（如果有）
+            # if os.path.exists(click_log_file):
+            #     df_existing = pd.read_csv(click_log_file)
+            # else:
+            #     df_existing = pd.DataFrame(columns=["id", "timestamp", "type", "title", "url"])
+    
+            # 新数据转换为 DataFrame 并追加
+            # df_new = pd.DataFrame([click_data])
+            # df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+    
+            # 保存回 CSV
+            # df_combined.to_csv(click_log_file, index=False)
+            save_to_gsheet(click_data)
+    
+            # 打开链接
+            components.html(f"""
+            <script>
+            window.open("{url}", "_blank");
+            </script>
+            """, height=0)
 
 
 ############################################
