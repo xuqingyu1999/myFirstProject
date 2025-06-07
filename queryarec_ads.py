@@ -44,7 +44,7 @@ def save_to_gsheet(data):
         ]
     )
     client = gspread.authorize(creds)
-    sheet = client.open("Click History").sheet2
+    sheet = client.open("QRec Ads").sheet2
     sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
 ############################################
 # Step 0: Page config & DeepSeek client
