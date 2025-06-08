@@ -45,7 +45,7 @@ def save_to_gsheet(data):
     )
     client = gspread.authorize(creds)
     sheet = client.open("SeEn Ads").sheet1
-    sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
+    sheet.append_row([data[k] for k in ["id", "start", "timestamp", "type", "title", "url"]])
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
@@ -356,6 +356,7 @@ def record_link_click_and_open(label, url, link_type):
 
             click_data = {
                 "id": st.session_state.prolific_id,
+                "start": st.session_state.start_time,
                 "timestamp": datetime.now().isoformat(),
                 "type": link_type,
                 "title": label,
@@ -368,6 +369,7 @@ def record_link_click_and_open(label, url, link_type):
             # 新点击记录
             click_data = {
             "id": st.session_state.prolific_id,
+            "start": st.session_state.start_time,
             "timestamp": datetime.now().isoformat(),
             "type": link_type,
             "title": label,
