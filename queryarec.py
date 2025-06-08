@@ -22,30 +22,26 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 import json
 
+
 def get_credentials_from_secrets():
     # 还原成 dict
     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
     return creds_dict
 
-# def save_to_gsheet(data: dict):
-#     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-#     creds = ServiceAccountCredentials.from_json_keyfile_name("streamlit_app.json", scope)
-#     client = gspread.authorize(creds)
-#     sheet = client.open("Click History").sheet1
-#     sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
-
 def save_to_gsheet(data):
     creds = ServiceAccountCredentials.from_json_keyfile_dict(
-    get_credentials_from_secrets(),
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
+        get_credentials_from_secrets(),
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
         ]
     )
     client = gspread.authorize(creds)
     sheet = client.open("QRec").sheet1
     sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
+
+
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
@@ -79,6 +75,7 @@ div.stButton > button:hover {
 </style>
 """
 st.markdown(LINK_BUTTON_CSS, unsafe_allow_html=True)
+
 
 ############################################
 # 2) Regex-based parser for [Title](URL) links in LLM text
@@ -121,6 +118,7 @@ def parse_markdown_links(text: str):
 
     return segments
 
+
 def display_parsed_markdown(text: str, link_type="deepseek"):
     """
     Splits 'text' into normal text vs. [Title](URL) links,
@@ -133,6 +131,7 @@ def display_parsed_markdown(text: str, link_type="deepseek"):
             st.markdown(seg["content"])
         elif seg["type"] == "link":
             record_link_click_and_open(seg["label"], seg["url"], link_type)
+
 
 ############################################
 # 3) Predefined replies
@@ -199,12 +198,14 @@ KEYWORD_RESPONSES = {
     # "shipping": "标准配送 48 h 内发货，全国包邮。",
 }
 
+
 def get_predefined_response(user_text: str):
     lower = user_text.lower()
     for kw, reply in KEYWORD_RESPONSES.items():
         if kw.lower() in lower:
             return reply
     return None
+
 
 ############################################
 # 4) Sponsored Product Data + Layout
@@ -287,6 +288,7 @@ PRODUCTS_DATA = {
     ]
 }
 
+
 ############################################
 # 5) Two-phase approach for links
 ############################################
@@ -304,6 +306,7 @@ def open_pending_link():
         """
         st.markdown(js_code, unsafe_allow_html=True)
 
+
 def open_button_link(link):
     js_code = f"""
             <script>
@@ -313,41 +316,6 @@ def open_button_link(link):
     st.markdown(js_code, unsafe_allow_html=True)
 
 
-# def record_link_click_and_open(label, url, link_type):
-#     """
-#         When button is clicked:
-#         - record to session + CSV
-#         - trigger browser to open URL in new tab
-#         """
-#     click_log_file = "click_history.csv"
-
-#     if st.button(label, key=label):
-#         # 1. 记录点击
-#         click_data = {
-#             "id": st.session_state.prolific_id,
-#             "timestamp": datetime.now().isoformat(),
-#             "type": link_type,
-#             "title": label,
-#             "url": url
-#         }
-
-#         if "click_history" not in st.session_state:
-#             st.session_state.click_history = []
-#         st.session_state.click_history.append(click_data)
-
-#         os.makedirs(os.path.dirname(click_log_file) or ".", exist_ok=True)
-#         with open(click_log_file, mode='a', newline='', encoding='utf-8') as file:
-#             writer = csv.DictWriter(file, fieldnames=["id","timestamp", "type", "title", "url"])
-#             if file.tell() == 0:
-#                 writer.writeheader()
-#             writer.writerow(click_data)
-
-#         # 2. 真正打开链接（用组件注入脚本，保证能执行）
-#         components.html(f"""
-#                 <script>
-#                     window.open("{url}", "_blank");
-#                 </script>
-#             """, height=0)
 def record_link_click_and_open(label, url, link_type):
     click_log_file = "click_history.csv"
     if label == 'end':
@@ -367,27 +335,15 @@ def record_link_click_and_open(label, url, link_type):
         if st.button(label, key=label):
             # 新点击记录
             click_data = {
-            "id": st.session_state.prolific_id,
-            "timestamp": datetime.now().isoformat(),
-            "type": link_type,
-            "title": label,
-            "url": url
+                "id": st.session_state.prolific_id,
+                "timestamp": datetime.now().isoformat(),
+                "type": link_type,
+                "title": label,
+                "url": url
             }
-    
-            # 读取已有数据（如果有）
-            # if os.path.exists(click_log_file):
-            #     df_existing = pd.read_csv(click_log_file)
-            # else:
-            #     df_existing = pd.DataFrame(columns=["id", "timestamp", "type", "title", "url"])
-    
-            # 新数据转换为 DataFrame 并追加
-            # df_new = pd.DataFrame([click_data])
-            # df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-    
-            # 保存回 CSV
-            # df_combined.to_csv(click_log_file, index=False)
+
             save_to_gsheet(click_data)
-    
+
             # 打开链接
             components.html(f"""
             <script>
@@ -400,7 +356,6 @@ def record_link_click_and_open(label, url, link_type):
 # 6) Ads in a 5-column grid
 ############################################
 def show_advertisements(relevant_products):
-
     with st.container(border=True):
         st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
 
@@ -425,21 +380,6 @@ def show_advertisements(relevant_products):
                     break
                 product = relevant_products[idx]
                 with row_cols[c]:
-                    # st.markdown(
-                    #     """
-                    #     <div style="
-                    #       border:1px solid #ccc;
-                    #       border-radius:8px;
-                    #       padding:10px;
-                    #       background:white;
-                    #       text-align:left;
-                    #       box-sizing:border-box;
-                    #       margin-bottom:12px;
-                    #       display:flex;
-                    #       align-items:center;">
-                    #     """,
-                    #     unsafe_allow_html=True
-                    # )
 
                     st.markdown(f"""
                     <div style="flex-shrink:0; margin-right:8px;">
@@ -458,6 +398,7 @@ def show_advertisements(relevant_products):
 
         # st.markdown("</div>", unsafe_allow_html=True)
 
+
 ############################################
 # 7) Query -> relevant products
 ############################################
@@ -470,12 +411,14 @@ def get_products_by_query(query: str):
     else:
         return []
 
+
 ############################################
 # Step 2: random "variant"
 ############################################
 if "variant" not in st.session_state:
     st.session_state.variant = random.randint(1, 4)
-variant = 1 #st.session_state.variant
+variant = 1  # st.session_state.variant
+
 
 ############################################
 # 8) DeepSeek Recommendation Flow
@@ -539,7 +482,7 @@ def show_deepseek_recommendation(with_ads: bool):
     if not st.session_state.first_message_submitted:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            user_first_input = st.text_input("**Please enter your message:**")
+            user_first_input = st.text_input("**Ask anything:**")
 
         if user_first_input:
             st.session_state.history.append(("user", user_first_input))
@@ -579,6 +522,7 @@ def show_deepseek_recommendation(with_ads: bool):
         st.session_state.current_ads = prods
         if prods:
             show_advertisements(prods)
+
 
 ############################################
 # 9) Google-like Search Flow
@@ -710,6 +654,7 @@ def show_google_search(with_ads: bool):
         if st.session_state.current_ads:
             show_advertisements(st.session_state.current_ads)
 
+
 ############################################
 # Main App Flow
 ############################################
@@ -738,7 +683,7 @@ def main():
 
         # (D) Provide an "End Session" button in the sidebar
         st.sidebar.title("Menu")
-        record_link_click_and_open(label='end',url=' ',link_type='end')
+        record_link_click_and_open(label='end', url=' ', link_type='end')
         # if st.sidebar.button("Finish / End Session"):
         #     # Gather data
         #     data_to_save = {
@@ -767,6 +712,7 @@ def main():
 
         # (F) Debug click history
         # st.write("Debug Click History:", st.session_state.click_history)
+
 
 if __name__ == "__main__":
     main()
