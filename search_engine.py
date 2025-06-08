@@ -76,7 +76,7 @@ def save_to_gsheet(data):
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
-st.set_page_config(page_title="🛒 DeepSeek 实验", layout="wide")
+# st.set_page_config(page_title="🛒 DeepSeek 实验", layout="wide")
 
 API_KEY = os.getenv("DEEPSEEK_API_KEY") or "sk-ce6eb3e9045c4110862945af28f4794e"
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com/v1")
