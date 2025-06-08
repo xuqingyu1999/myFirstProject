@@ -663,7 +663,7 @@ def main():
     #    Here we use default settings, so logs go in `./streamlit_analytics/`
     with streamlit_analytics.track():
         # (A) If we have a pending link from a previous run, open it now
-        open_pending_link()
+        # open_pending_link()
 
         # (B) Ask for Prolific ID if not set
         if "prolific_id" not in st.session_state:
