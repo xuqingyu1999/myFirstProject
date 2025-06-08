@@ -19,9 +19,39 @@ import pandas as pd
 import streamlit_analytics2 as streamlit_analytics
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-
 import json
 
+# 1) Must be your first Streamlit call
+st.set_page_config(
+    page_title="My App",
+    layout="wide",
+    # you can also prune the hamburger menu this way
+    menu_items={
+        "Get Help": None,
+        "Report a bug": None,
+        "About": None
+    }
+)
+
+# hide header, footer, main menu, share/more, and “Manage app” button
+st.markdown(
+    """
+    <style>
+      header {visibility: hidden;}
+      #MainMenu {visibility: hidden;}
+      footer {visibility: hidden;}
+      /* hide the “Share” and “More” icons (if still present) */
+      [data-testid="share-button"], [data-testid="more-actions-button"] {
+        visibility: hidden;
+      }
+      /* hide the “Manage app” button in the bottom-right */
+      button[title="Manage app"] {
+        display: none !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 def get_credentials_from_secrets():
     # 还原成 dict
@@ -45,7 +75,7 @@ def save_to_gsheet(data):
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
-st.set_page_config(page_title="🛒 DeepSeek 实验", layout="wide")
+# st.set_page_config(page_title="🛒 DeepSeek 实验", layout="wide")
 
 API_KEY = os.getenv("DEEPSEEK_API_KEY") or "sk-ce6eb3e9045c4110862945af28f4794e"
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com/v1")
