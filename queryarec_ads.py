@@ -356,6 +356,7 @@ def record_link_click_and_open(label, url, link_type):
 
             click_data = {
                 "id": st.session_state.prolific_id,
+                "start": st.session_state.start_time,
                 "timestamp": datetime.now().isoformat(),
                 "type": link_type,
                 "title": label,
@@ -368,6 +369,7 @@ def record_link_click_and_open(label, url, link_type):
             # 新点击记录
             click_data = {
             "id": st.session_state.prolific_id,
+            "start": st.session_state.start_time,
             "timestamp": datetime.now().isoformat(),
             "type": link_type,
             "title": label,
@@ -539,12 +541,13 @@ def show_deepseek_recommendation(with_ads: bool):
     if not st.session_state.first_message_submitted:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            user_first_input = st.text_input("**Please enter your message:**")
+            user_first_input = st.text_input("**Ask Anything:**")
 
         if user_first_input:
             st.session_state.history.append(("user", user_first_input))
             st.chat_message("user").write(user_first_input)
             st.session_state.first_message_submitted = True
+            st.session_state.start_time = datetime.now().isoformat()
             st.session_state.pending_first_message = user_first_input
             st.rerun()
         return
