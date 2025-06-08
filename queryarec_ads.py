@@ -547,7 +547,6 @@ def show_deepseek_recommendation(with_ads: bool):
             st.session_state.history.append(("user", user_first_input))
             st.chat_message("user").write(user_first_input)
             st.session_state.first_message_submitted = True
-            st.session_state.start_time = datetime.now().isoformat()
             st.session_state.pending_first_message = user_first_input
             st.rerun()
         return
