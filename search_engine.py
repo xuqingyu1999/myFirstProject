@@ -22,6 +22,33 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 import json
 
+# 1) Must be your first Streamlit call
+st.set_page_config(
+    page_title="My App",
+    layout="wide",
+    # you can also prune the hamburger menu this way
+    menu_items={
+        "Get Help": None,
+        "Report a bug": None,
+        "About": None
+    }
+)
+
+# 2) Hide header (including Share/More), MainMenu, and footer
+st.markdown(
+    """
+    <style>
+      /* hide the entire header bar */
+      header {visibility: hidden;}
+      /* hide the “···” main menu */
+      #MainMenu {visibility: hidden;}
+      /* hide the footer (“Made with Streamlit”) */
+      footer {visibility: hidden;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 def get_credentials_from_secrets():
     # 还原成 dict
     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
