@@ -347,16 +347,7 @@ def open_button_link(link):
 def record_link_click_and_open(label, url, link_type):
     click_log_file = "click_history.csv"
 
-    if st.button(label, key=label):
-        # 新点击记录
-        click_data = {
-        "id": st.session_state.prolific_id,
-        "timestamp": datetime.now().isoformat(),
-        "type": link_type,
-        "title": label,
-        "url": url
-        }
-        save_to_gsheet(click_data)    if label == 'end':
+        if label == 'end':
         if st.sidebar.button("Finish / End Session"):
             st.success("Session ended. Thank you!")
 
@@ -382,6 +373,7 @@ def record_link_click_and_open(label, url, link_type):
                 "url": url
             }
             save_to_gsheet(click_data)
+
             js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
             st_javascript(js)
         # 打开链接
