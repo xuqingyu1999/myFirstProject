@@ -182,8 +182,8 @@ KEYWORD_RESPONSES = {
    - Features: Great value (EPA 500 mg + DHA 250 mg per soft-gel); IFOS certified; suitable for long-term, everyday supplementation. 
    - Ideal for: General health maintenance, budget-conscious consumers, and daily nutritional support.
 
-[**Blackmores Triple-Strength Fish Oil** ](https://www.amazon.com.au/Blackmores-Omega-Triple-Concentrated-Capsules/dp/B0773JF7JX?th=1)
-   - Features: Best-selling Australian pharmacy product; 900 mg Omega-3 per soft-gel; supports cardiovascular health.  
+[**Blackmores OMEGA BRAIN Caps 60s** ](https://www.amazon.com/Blackmores-OMEGA-BRAIN-Caps-60s/dp/B00AQ7T7UQ/ref=sr_1_1?dib=eyJ2IjoiMSJ9.Xi16zGLrVB2JEBMcaBq9fUHZB374OySrOScz-hc6nyErNDQ7P7chqgxdgGvAXF_GDp3q4nWSNxlG0u1K1OSyM4n-SQKTEpWhnOFjg65ASFR1-tIINNRDC9Oxli83HIaEufFArmZyIOV2yqNDbl8VvSeFGT2Py2Q_hgJgwSDgd__H0L83O-AjhrPO1Da5R2RNrr2u7tomU76Jp6UuUxz4WJnBioO8qtZzrX89V7-XB4dyp04hJXr_EiFNmXJsnBhGxwYC3mRlv8reaaMnnI1VJXsNN37O3kOQVpnCesvC4Qw.V_OlCbAGCeFocjHyyOHBoKo-o10KHpI2YTJg33GaEuQ&dib_tag=se&keywords=blackmores+fish+oil&qid=1750090837&sr=8-1)
+   - Features: Blackmores Omega Brain Capsules provide concentrated omega-3 fatty acids, particularly high DHA levels to support brain structure and enhance cognitive function.  
    - Ideal for: Intensive cardiovascular support, joint health, and individuals seeking a high-dose omega-3 supplement.
 
 [**Möller’s Norwegian Cod-Liver Oil**](https://www.amazon.com.be/-/en/Mollers-Omega-Norwegian-Cod-Liver-Pruners/dp/B074XB9RNH?language=en_GB)
