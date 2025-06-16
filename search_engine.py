@@ -633,10 +633,10 @@ def show_google_search(with_ads: bool):
                     "desc": "Great value (EPA 500 mg + DHA 250 mg per soft-gel); IFOS certified; suitable for long-term, everyday supplementation. This is ideal for general health maintenance, budget-conscious consumers, and daily nutritional support."
                 },
                 {
-                    "title": "Blackmores Triple-Strength Fish Oil",
-                    "url": "https://www.amazon.com.au/Blackmores-Omega-Triple-Concentrated-Capsules/dp/B0773JF7JX?th=1",
+                    "title": "Blackmores OMEGA BRAIN Caps 60s",
+                    "url": "https://www.amazon.com/Blackmores-OMEGA-BRAIN-Caps-60s/dp/B00AQ7T7UQ/ref=sr_1_1?dib=eyJ2IjoiMSJ9.Xi16zGLrVB2JEBMcaBq9fUHZB374OySrOScz-hc6nyErNDQ7P7chqgxdgGvAXF_GDp3q4nWSNxlG0u1K1OSyM4n-SQKTEpWhnOFjg65ASFR1-tIINNRDC9Oxli83HIaEufFArmZyIOV2yqNDbl8VvSeFGT2Py2Q_hgJgwSDgd__H0L83O-AjhrPO1Da5R2RNrr2u7tomU76Jp6UuUxz4WJnBioO8qtZzrX89V7-XB4dyp04hJXr_EiFNmXJsnBhGxwYC3mRlv8reaaMnnI1VJXsNN37O3kOQVpnCesvC4Qw.V_OlCbAGCeFocjHyyOHBoKo-o10KHpI2YTJg33GaEuQ&dib_tag=se&keywords=blackmores+fish+oil&qid=1750090837&sr=8-1",
                     "site": "vivanaturals.com",
-                    "desc": "Best-selling Australian pharmacy product; 900 mg Omega-3 per soft-gel; supports cardiovascular health. This is ideal for intensive cardiovascular support, joint health, and individuals seeking a high-dose omega-3 supplement."
+                    "desc": "Blackmores Omega Brain Capsules provide concentrated omega-3 fatty acids, particularly high DHA levels to support brain structure and enhance cognitive function. This is ideal for intensive cardiovascular support, joint health, and individuals seeking a high-dose omega-3 supplement."
                 },
                 {
                     "title": "Möller’s Norwegian Cod-Liver Oil",
