@@ -227,6 +227,8 @@ KEYWORD_RESPONSES = {
 
 def get_predefined_response(user_text: str):
     lower = user_text.lower()
+    if 'fish' in lower:
+        lower='fish oil'
     for kw, reply in KEYWORD_RESPONSES.items():
         if kw.lower() in lower:
             return reply
