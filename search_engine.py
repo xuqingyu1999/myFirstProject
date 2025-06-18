@@ -378,7 +378,7 @@ def open_button_link(link):
 def record_link_click_and_open(label, url, link_type):
     # click_log_file = "click_history.csv"
     if label == 'Finish / End Session':
-        if st.sidebar.button("Finish / End Session"):
+        if st.sidebar.button("Finish / End Session", key=label):
             st.success("Session ended. Thank you!")
 
             click_data = {
