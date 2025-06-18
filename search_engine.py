@@ -737,6 +737,9 @@ def main():
     with streamlit_analytics.track():
         # (A) If we have a pending link from a previous run, open it now
         open_pending_link()
+        st.sidebar.title("Menu")
+        # st.sidebar.button("Finish / End Session")
+        record_link_click_and_open(label='Finish / End Session',url=' ',link_type='end')
 
         # (B) Ask for Prolific ID if not set
         if "prolific_id" not in st.session_state:
@@ -755,9 +758,7 @@ def main():
             st.session_state.click_history = []
 
         # (D) Provide an "End Session" button in the sidebar
-        st.sidebar.title("Menu")
-        # st.sidebar.button("Finish / End Session")
-        record_link_click_and_open(label='Finish / End Session',url=' ',link_type='end')
+        
         # if st.sidebar.button("Finish / End Session"):
         #     # Gather data
         #     data_to_save = {
