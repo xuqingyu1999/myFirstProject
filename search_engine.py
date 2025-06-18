@@ -756,6 +756,7 @@ def main():
 
         # (D) Provide an "End Session" button in the sidebar
         st.sidebar.title("Menu")
+        st.sidebar.button("Finish / End Session")
         record_link_click_and_open(label='end',url=' ',link_type='end')
         # if st.sidebar.button("Finish / End Session"):
         #     # Gather data
