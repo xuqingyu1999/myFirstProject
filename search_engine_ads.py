@@ -485,7 +485,7 @@ def get_products_by_query(query: str):
     lower_q = query.lower()
     if ("肝" in lower_q) or ("护肝" in lower_q) or ("liver" in lower_q):
         return PRODUCTS_DATA["liver"]
-    elif ("鱼油" in lower_q) or ("fish oil" in lower_q):
+    elif ("fish" in lower_q) or ("fish oil" in lower_q):
         return PRODUCTS_DATA["fish oil"]
     else:
         return []
