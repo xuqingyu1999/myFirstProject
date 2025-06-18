@@ -738,8 +738,20 @@ def main():
         # (A) If we have a pending link from a previous run, open it now
         open_pending_link()
         st.sidebar.title("Menu")
-        # st.sidebar.button("Finish / End Session")
-        record_link_click_and_open(label='Finish / End Session',url=' ',link_type='end')
+        if st.sidebar.button(label, key="end_session_button"):
+            st.success("Session ended. Thank you!")
+    
+            click_data = {
+                "id": st.session_state.get("prolific_id", "unknown"),
+                "start": st.session_state.get("start_time", datetime.now().isoformat()),
+                "timestamp": datetime.now().isoformat(),
+                "type": link_type,
+                "title": label,
+                "url": url
+            }
+            save_to_gsheet(click_data)
+            st.stop()
+        # record_link_click_and_open(label='Finish / End Session',url=' ',link_type='end')
 
         # (B) Ask for Prolific ID if not set
         if "prolific_id" not in st.session_state:
