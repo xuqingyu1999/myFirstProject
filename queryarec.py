@@ -343,8 +343,8 @@ def open_button_link(link):
 
 
 def record_link_click_and_open(label, url, link_type):
-    click_log_file = "click_history.csv"
-    if label == 'end':
+    # click_log_file = "click_history.csv"
+    if label == 'Finish / End Session':
         if st.sidebar.button("Finish / End Session"):
             st.success("Session ended. Thank you!")
 
@@ -712,7 +712,7 @@ def main():
 
         # (D) Provide an "End Session" button in the sidebar
         st.sidebar.title("Menu")
-        record_link_click_and_open(label='end', url=' ', link_type='end')
+        record_link_click_and_open(label='Finish / End Session', url=' ', link_type='end')
         # if st.sidebar.button("Finish / End Session"):
         #     # Gather data
         #     data_to_save = {
