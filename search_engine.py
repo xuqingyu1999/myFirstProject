@@ -738,19 +738,19 @@ def main():
         # (A) If we have a pending link from a previous run, open it now
         open_pending_link()
         st.sidebar.title("Menu")
-        if st.sidebar.button('Finish / End Session', key="end_session_button"):
-            st.success("Session ended. Thank you!")
+        # if st.sidebar.button('Finish / End Session', key="end_session_button"):
+        #     st.success("Session ended. Thank you!")
     
-            click_data = {
-                "id": st.session_state.get("prolific_id", "unknown"),
-                "start": st.session_state.get("start_time", datetime.now().isoformat()),
-                "timestamp": datetime.now().isoformat(),
-                "type": 'end',
-                "title": 'Finish / End Session',
-                "url": ' '
-            }
-            save_to_gsheet(click_data)
-            st.stop()
+        #     click_data = {
+        #         "id": st.session_state.get("prolific_id", "unknown"),
+        #         "start": st.session_state.get("start_time", datetime.now().isoformat()),
+        #         "timestamp": datetime.now().isoformat(),
+        #         "type": 'end',
+        #         "title": 'Finish / End Session',
+        #         "url": ' '
+        #     }
+        #     save_to_gsheet(click_data)
+        #     st.stop()
         # record_link_click_and_open(label='Finish / End Session',url=' ',link_type='end')
 
         # (B) Ask for Prolific ID if not set
@@ -770,7 +770,7 @@ def main():
             st.session_state.click_history = []
 
         # (D) Provide an "End Session" button in the sidebar
-        
+        st.sidebar.button('Finish / End Session', key="end_session_button")
         # if st.sidebar.button("Finish / End Session"):
         #     # Gather data
         #     data_to_save = {
