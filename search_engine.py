@@ -643,7 +643,7 @@ def show_google_search(with_ads: bool):
 
         # 这里仅做示例返回几条伪搜索结果，可根据关键词控制输出
 
-        if ("鱼油" in lower_q) or ("fish oil" in lower_q):
+        if ("fish" in lower_q) or ("fish oil" in lower_q):
             return [
                 {
                     "title": "Nordic Naturals Ultimate Omega  ",
