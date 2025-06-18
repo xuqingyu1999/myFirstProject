@@ -602,7 +602,24 @@ def show_deepseek_recommendation(with_ads: bool):
 # 9) Google-like Search Flow
 ############################################
 def show_google_search(with_ads: bool):
-    st.title("Querya search")
+    # st.title("Querya search")
+    col1, col2 = st.columns([6, 1])  # Wider space for title, narrower for button
+    with col1:
+        st.title("Querya Rec")
+    with col2:
+        if st.button("Finish / End Session", key="end_button_inline"):
+            st.success("Session ended. Thank you!")
+    
+            click_data = {
+                "id": st.session_state.get("prolific_id", "unknown"),
+                "start": st.session_state.get("start_time", datetime.now().isoformat()),
+                "timestamp": datetime.now().isoformat(),
+                "type": "end",
+                "title": "Finish / End Session",
+                "url": " "
+            }
+            save_to_gsheet(click_data)
+            st.stop()
 
     if "search_results" not in st.session_state:
         st.session_state.search_results = []
