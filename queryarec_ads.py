@@ -477,7 +477,7 @@ def get_products_by_query(query: str):
     lower_q = query.lower()
     if ("肝" in lower_q) or ("护肝" in lower_q) or ("liver" in lower_q):
         return PRODUCTS_DATA["liver"]
-    elif ("鱼油" in lower_q) or ("fish oil" in lower_q):
+    elif ("fish" in lower_q) or ("fish oil" in lower_q):
         return PRODUCTS_DATA["fish oil"]
     else:
         return []
@@ -493,7 +493,35 @@ variant = 2 #st.session_state.variant
 # 8) DeepSeek Recommendation Flow
 ############################################
 def show_deepseek_recommendation(with_ads: bool):
-    st.title("Querya Rec")
+    # st.title("Querya Rec")
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        st.title("Querya Rec")
+    with col2:
+        end_clicked = st.button("Finish / End Session", key="end_button_inline")
+    
+    if end_clicked:
+        # Full-screen centered message (clears interface)
+        st.session_state["end_clicked"] = True
+        click_data = {
+            "id": st.session_state.get("prolific_id", "unknown"),
+            "start": st.session_state.get("start_time", datetime.now().isoformat()),
+            "timestamp": datetime.now().isoformat(),
+            "type": "end",
+            "title": "Finish / End Session",
+            "url": " "
+        }
+        save_to_gsheet(click_data)
+        st.rerun()  # Re-run to show the message cleanly in next render
+    
+    # After rerun
+    if st.session_state.get("end_clicked", False):
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown(
+            "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
+            unsafe_allow_html=True
+        )
+        st.stop()
     # st.write(f"Current version: {'with ads' if with_ads else 'without ads'}")
 
     if "history" not in st.session_state:
