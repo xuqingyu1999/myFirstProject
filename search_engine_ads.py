@@ -785,9 +785,9 @@ def main():
             st.session_state.click_history = []
 
         # (D) Provide an "End Session" button in the sidebar
-        st.sidebar.title("Menu")
+        # st.sidebar.title("Menu")
         # if st.sidebar.button("Finish / End Session"):
-        record_link_click_and_open(label='end',url=' ',link_type='end')
+        # record_link_click_and_open(label='end',url=' ',link_type='end')
             # st.success("Session data saved to session_data.json. Thank you!")
             # st.stop()
 
