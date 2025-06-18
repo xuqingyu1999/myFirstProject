@@ -603,23 +603,37 @@ def show_deepseek_recommendation(with_ads: bool):
 ############################################
 def show_google_search(with_ads: bool):
     # st.title("Querya search")
-    col1, col2 = st.columns([6, 1])  # Wider space for title, narrower for button
+    # Inside your main app logic, e.g., in show_deepseek_recommendation or main()
+
+    col1, col2 = st.columns([6, 1])
     with col1:
-        st.title("Querya Rec")
+        st.title("Querya search")
     with col2:
-        if st.button("Finish / End Session", key="end_button_inline"):
-            st.success("Session ended. Thank you!")
+        end_clicked = st.button("Finish / End Session", key="end_button_inline")
     
-            click_data = {
-                "id": st.session_state.get("prolific_id", "unknown"),
-                "start": st.session_state.get("start_time", datetime.now().isoformat()),
-                "timestamp": datetime.now().isoformat(),
-                "type": "end",
-                "title": "Finish / End Session",
-                "url": " "
-            }
-            save_to_gsheet(click_data)
-            st.stop()
+    if end_clicked:
+        # Full-screen centered message (clears interface)
+        st.session_state["end_clicked"] = True
+        click_data = {
+            "id": st.session_state.get("prolific_id", "unknown"),
+            "start": st.session_state.get("start_time", datetime.now().isoformat()),
+            "timestamp": datetime.now().isoformat(),
+            "type": "end",
+            "title": "Finish / End Session",
+            "url": " "
+        }
+        save_to_gsheet(click_data)
+        st.rerun()  # Re-run to show the message cleanly in next render
+    
+    # After rerun
+    if st.session_state.get("end_clicked", False):
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown(
+            "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
+            unsafe_allow_html=True
+        )
+        st.stop()
+
 
     if "search_results" not in st.session_state:
         st.session_state.search_results = []
@@ -754,7 +768,7 @@ def main():
     with streamlit_analytics.track():
         # (A) If we have a pending link from a previous run, open it now
         open_pending_link()
-        st.sidebar.title("Menu")
+        # st.sidebar.title("Menu")
         # if st.sidebar.button('Finish / End Session', key="end_session_button"):
         #     st.success("Session ended. Thank you!")
     
@@ -787,7 +801,7 @@ def main():
             st.session_state.click_history = []
 
         # (D) Provide an "End Session" button in the sidebar
-        st.sidebar.button('Finish / End Session', key="end_session_button")
+        # st.sidebar.button('Finish / End Session', key="end_session_button")
         # if st.sidebar.button("Finish / End Session"):
         #     # Gather data
         #     data_to_save = {
