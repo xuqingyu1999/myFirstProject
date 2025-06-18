@@ -604,8 +604,36 @@ def show_deepseek_recommendation(with_ads: bool):
 # 9) Google-like Search Flow
 ############################################
 def show_google_search(with_ads: bool):
-    st.title("Querya search")
-
+    # st.title("Querya search")
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        st.title("Querya search")
+    with col2:
+        end_clicked = st.button("Finish / End Session", key="end_button_inline")
+    
+    if end_clicked:
+        # Full-screen centered message (clears interface)
+        st.session_state["end_clicked"] = True
+        click_data = {
+            "id": st.session_state.get("prolific_id", "unknown"),
+            "start": st.session_state.get("start_time", datetime.now().isoformat()),
+            "timestamp": datetime.now().isoformat(),
+            "type": "end",
+            "title": "Finish / End Session",
+            "url": " "
+        }
+        save_to_gsheet(click_data)
+        st.rerun()  # Re-run to show the message cleanly in next render
+    
+    # After rerun
+    if st.session_state.get("end_clicked", False):
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown(
+            "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
+            unsafe_allow_html=True
+        )
+        st.stop()
+        
     if "search_results" not in st.session_state:
         st.session_state.search_results = []
 
@@ -614,7 +642,7 @@ def show_google_search(with_ads: bool):
 
         # 这里仅做示例返回几条伪搜索结果，可根据关键词控制输出
 
-        if ("鱼油" in lower_q) or ("fish oil" in lower_q):
+        if ("fish" in lower_q) or ("fish oil" in lower_q):
             return [
                 {
                     "title": "Nordic Naturals Ultimate Omega  ",
