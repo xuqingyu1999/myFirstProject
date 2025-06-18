@@ -738,16 +738,16 @@ def main():
         # (A) If we have a pending link from a previous run, open it now
         open_pending_link()
         st.sidebar.title("Menu")
-        if st.sidebar.button(label, key="end_session_button"):
+        if st.sidebar.button('Finish / End Session', key="end_session_button"):
             st.success("Session ended. Thank you!")
     
             click_data = {
                 "id": st.session_state.get("prolific_id", "unknown"),
                 "start": st.session_state.get("start_time", datetime.now().isoformat()),
                 "timestamp": datetime.now().isoformat(),
-                "type": link_type,
-                "title": label,
-                "url": url
+                "type": 'end',
+                "title": 'Finish / End Session',
+                "url": ' '
             }
             save_to_gsheet(click_data)
             st.stop()
