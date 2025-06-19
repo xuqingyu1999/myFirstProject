@@ -21,6 +21,8 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from streamlit_javascript import st_javascript
 import json
+import webbrowser
+
 
 def get_credentials_from_secrets():
     # 还原成 dict
@@ -374,8 +376,9 @@ def record_link_click_and_open(label, url, link_type):
             }
             save_to_gsheet(click_data)
 
-            js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
-            st_javascript(js)
+            # js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
+            # st_javascript(js)
+            webbrowser.open(url)
         # 打开链接
         # components.html(f"""
         # <script>
