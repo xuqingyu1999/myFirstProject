@@ -393,7 +393,7 @@ def record_link_click_and_open(label, url, link_type):
             else:
                 fav_dict[url] = label
 
-            
+            time.sleep(3)
             st.rerun()
         # 打开链接
         # components.html(f"""
