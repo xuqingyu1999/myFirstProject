@@ -385,15 +385,15 @@ def record_link_click_and_open(label, url, link_type):
                 "url": url
             }
             save_to_gsheet(click_data)
-
+            js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
+            st_javascript(js)
             # ---------- 2) toggle favourite & log ---------------
             if is_fav:
                 del fav_dict[url]
             else:
                 fav_dict[url] = label
 
-            js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
-            st_javascript(js)
+            
             st.rerun()
         # 打开链接
         # components.html(f"""
