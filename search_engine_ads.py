@@ -73,6 +73,8 @@ def save_to_gsheet(data):
     client = gspread.authorize(creds)
     sheet = client.open("SeEn Ads").sheet1
     sheet.append_row([data[k] for k in ["id", "start", "timestamp", "type", "title", "url"]])
+
+st.session_state.setdefault("favorites", {})
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
@@ -377,6 +379,15 @@ def open_button_link(link):
 #             """, height=0)
 def record_link_click_and_open(label, url, link_type):
     click_log_file = "click_history.csv"
+    # current favourite state
+    fav_dict = st.session_state.favorites
+    is_fav = url in fav_dict
+    star = "★" if is_fav else "☆"
+
+    # compose single label
+    btn_label = f"{label} {star}"
+    btn_key = f"{label}"  # make key unique per URL
+
     if label == 'end':
         if st.sidebar.button("Finish / End Session"):
             st.success("Session ended. Thank you!")
@@ -392,28 +403,33 @@ def record_link_click_and_open(label, url, link_type):
             save_to_gsheet(click_data)
             st.stop()
     else:
-        if st.button(label, key=label):
+        if st.button(btn_label, key=btn_key):
             # 新点击记录
             click_data = {
-            "id": st.session_state.prolific_id,
-            "start": st.session_state.start_time,
-            "timestamp": datetime.now().isoformat(),
-            "type": link_type,
-            "title": label,
-            "url": url
+                "id": st.session_state.prolific_id,
+                "start": st.session_state.start_time,
+                "timestamp": datetime.now().isoformat(),
+                "type": link_type,
+                "title": label,
+                "url": url
             }
-    
-            
             save_to_gsheet(click_data)
-    
-            # 打开链接
-            # components.html(f"""
-            # <script>
-            # window.open("{url}", "_blank");
-            # </script>
-            # """, height=0)
             js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
             st_javascript(js)
+            # ---------- 2) toggle favourite & log ---------------
+            if is_fav:
+                del fav_dict[url]
+            else:
+                fav_dict[url] = label
+
+            time.sleep(3)
+            st.rerun()
+        # 打开链接
+        # components.html(f"""
+        # <script>
+        # window.open("{url}", "_blank");
+        # </script>
+        # """, height=0)
 
 
 ############################################
@@ -785,7 +801,14 @@ def main():
             st.session_state.click_history = []
 
         # (D) Provide an "End Session" button in the sidebar
-        # st.sidebar.title("Menu")
+        st.sidebar.title("Menu")
+        with st.sidebar.expander("★ My favourites", expanded=False):
+            favs = st.session_state.favorites
+            if favs:
+                for link, title in favs.items():
+                    st.markdown(f"- [{title}]({link})")
+            else:
+                st.write("Nothing yet – click ☆ to add.")
         # if st.sidebar.button("Finish / End Session"):
         # record_link_click_and_open(label='end',url=' ',link_type='end')
             # st.success("Session data saved to session_data.json. Thank you!")
