@@ -69,8 +69,14 @@ def save_to_gsheet(data):
         ]
     )
     client = gspread.authorize(creds)
-    sheet = client.open("QRec").sheet1
-    sheet.append_row([data[k] for k in ["id", "start", "timestamp", "type", "title", "url"]])
+    for i in range(3):
+        try:
+            sheet = client.open("QRec").sheet1
+            sheet.append_row([data[k] for k in ["id", "start", "timestamp", "type", "title", "url"]])
+            return ''
+        except Exception as e:
+            time.sleep(0.5)
+    return ''
 
 st.session_state.setdefault("favorites", {})
 ############################################
@@ -380,9 +386,15 @@ def record_link_click_and_open(label, url, link_type):
                 "title": label,
                 "url": url
             }
+            
             save_to_gsheet(click_data)
-            js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
-            st_javascript(js)
+            # js = f'window.open("{url}", "_blank").then(r => window.parent.location.href);'
+            # st_javascript(js)
+            components.html(f"""
+            <script>
+            window.open("{url}", "_blank");
+            </script>
+            """, height=0)
             # ---------- 2) toggle favourite & log ---------------
             if is_fav:
                 del fav_dict[url]
