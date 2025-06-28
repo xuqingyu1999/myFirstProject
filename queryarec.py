@@ -573,7 +573,7 @@ def show_deepseek_recommendation(with_ads: bool):
     if not st.session_state.first_message_submitted:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            user_first_input = st.text_input("**Ask anything:**")
+            user_first_input = st.text_input("**Ask Anything:**")
 
         if user_first_input:
             st.session_state.history.append(("user", user_first_input))
