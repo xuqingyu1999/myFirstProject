@@ -1023,7 +1023,7 @@ def show_google_search(with_ads: bool):
                     "title": "Möller’s Norwegian Cod-Liver Oil",
                     "product_url": "https://www.amazon.com.be/-/en/Mollers-Omega-Norwegian-Cod-Liver-Pruners/dp/B074XB9RNH?language=en_GB",
                     "site": "www.mollers.no",
-                    "image_url": "hhttps://m.media-amazon.com/images/I/61eg-Vgm97L._AC_SL1500_.jpg",
+                    "image_url": "https://m.media-amazon.com/images/I/61eg-Vgm97L._AC_SL1500_.jpg",
                     "desc": "Liquid fish oil enriched with natural vitamins A and D; trusted Nordic brand with over 100 years of history; suitable for children and pregnant women. This is ideal for family supplementation, children’s health, pregnancy nutritional support, and enhancing immune function.",
                     "page_description": "**About this item**\n- Natural source of EPA & DHA to support heart, brain and vision.\n- Supplies vitamins A & D for immune function and normal bone growth.\n- Sustainably sourced Arctic cod and bottled under Norway’s century-old Möller’s quality standards.\n- Refreshing lemon flavor with no fishy aftertaste; kid- and pregnancy-friendly."
                 },
