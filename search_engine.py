@@ -51,7 +51,7 @@ def save_to_gsheet(data):
     for i in range(3):
         try:
             sheet = client.open("SeEn").sheet1
-            sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
+            sheet.append_row([data[k] for k in ["id", "start","timestamp", "type", "title", "url"]])
             return ''
         except Exception as e:
             time.sleep(0.5)
@@ -77,6 +77,29 @@ if "start_time" not in st.session_state:
 ############################################
 # 1) Custom CSS to style all st.buttons like links
 ############################################
+st.markdown(
+    """
+    <style>
+      /* prominent Back button */
+      div.stButton > button[title="back"] {
+        background:  #ffb703 !important;   /* amber */
+        color:       #000     !important;
+        padding:     20px 50px !important; /* taller & wider */
+        font-size:   30px      !important; /* BIGGER text   */
+        font-weight: 900       !important;
+        border:      none      !important;
+        border-radius: 8px     !important;
+        text-decoration: none  !important;
+        width: 100%;                       /* full column width */
+      }
+      div.stButton > button[title="back"]:hover {
+        background: #ffa400 !important;    /* darker on hover */
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 LINK_BUTTON_CSS = """
 <style>
 /* Turn all Streamlit buttons into link-style text */
@@ -118,6 +141,30 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+
+st.markdown(
+    """
+    <style>
+      /* 1️⃣  Peach border *and* a bit of breathing room */
+      div:has(> #ad-box-anchor) {
+        border: 1px solid #FEE9DF !important;   /* peach border        */
+        border-radius: 6px;
+        padding: 14px !important;               /* so the content
+                                                  doesn’t cover border */
+      }
+      /* 1‑b  Make sure Streamlit columns inside are transparent */
+      div:has(> #ad-box-anchor) [data-testid="column"] {
+        background: transparent !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+
 
 
 ############################################
@@ -180,7 +227,8 @@ def display_parsed_markdown(source, link_type="organic"):
     for seg in segments:
         if seg["type"] == "link":
             # show_product_item(seg, link_type="organic")
-            show_product_item(seg, link_type=link_type, show_image=False)
+
+            show_product_item(seg, link_type=link_type, show_image=True, image_position='below')
         elif seg["type"] == "text":
             st.markdown(seg["content"])
         else:  # non‑product link
@@ -191,6 +239,13 @@ def render_predefined_products(prod_list, heading, link_type="organic"):
     st.markdown(heading)
     for p in prod_list:
         show_product_item(p, link_type=link_type, show_image=False)
+        if p.get("image_url"):
+            st.markdown(
+                f"<img src='{p['image_url']}' "
+                f"style='display:block; margin:6px auto 0 auto; "
+                f"width:120px; height:120px; object-fit:contain;'>",
+                unsafe_allow_html=True,
+            )
         if p.get("description"):
             st.markdown(p["description"])
 
@@ -515,6 +570,21 @@ def open_pending_link():
         """
         st.markdown(js_code, unsafe_allow_html=True)
 
+def back_to_main():
+    """Return from product page and log the click."""
+    # 1) write click to Google Sheet
+    save_to_gsheet({
+        "id":        st.session_state.prolific_id,
+        "start":     st.session_state.start_time,
+        "timestamp": datetime.now().isoformat(),
+        "type":      "back",
+        "title":     "Back to main",
+        "url":       " ",                         # no external URL
+    })
+    time.sleep(0.5)
+    # 2) navigate
+    st.session_state.update({"page": "main", "current_product": {}})
+
 def render_product_page():
     """Single‑product landing page."""
     p = st.session_state.current_product
@@ -530,7 +600,7 @@ def render_product_page():
     # })
 
     # b) UI
-    st.button("← Back", key="back_to_main", on_click=lambda: st.session_state.update({"page": "main"}))
+    st.button("← Back", key="back_to_main", help="back", on_click=back_to_main)
     st.subheader(p["title"])
     # st.image(p["image_url"], use_column_width=True)
     st.image(p["image_url"], use_container_width=True)
@@ -641,7 +711,7 @@ def record_link_click_and_open(label, url, link_type):
 #             st.rerun()
 
 def show_product_item(p: dict, *, link_type="organic",
-                      show_image=False, orientation="horizontal"):
+                      show_image=False, orientation="horizontal", image_position="none"):
     """
     Render one product line.
       orientation = "horizontal" → TITLE ★        (no image)
@@ -662,16 +732,18 @@ def show_product_item(p: dict, *, link_type="organic",
         )
 
     # title + star on same row
-    if link_type=='ad':
+    if link_type == 'ad':
         title_col, star_col = st.columns([2, 1], gap="small")
     else:
         title_col, star_col = st.columns([9, 1], gap="small")
     with title_col:
-        if link_type=='ad':
-            st.markdown("<div style='text-align:right;'>", unsafe_allow_html=True)
+        if link_type == 'ad':
+            label_text = f"Sponsored · {p['title']}"
+            css_help = "ad_black"
         else:
-            st.markdown("<div style='text-align:left;'>", unsafe_allow_html=True)
-        if st.button(p["title"], key=f"prod_{p['id']}"):
+            label_text = p["title"]
+            css_help = ""
+        if st.button(label_text, key=f"prod_{p['id']}", help=css_help):
             save_to_gsheet({
                 "id": st.session_state.prolific_id,
                 "start": st.session_state.start_time,
@@ -710,62 +782,51 @@ def show_product_item(p: dict, *, link_type="organic",
                     "url": p["product_url"],
                 })
             st.rerun()
+    # ── optional picture below the title (for organic items) ──
+    if show_image and image_position == "below":
+        st.markdown(
+            f"<img src='{p['image_url']}' "
+            f"style='display:block; margin:6px auto 0 auto; "
+            f"width:120px; height:120px; object-fit:contain;'>",
+            unsafe_allow_html=True,
+        )
+
 
 ############################################
 # 6) Ads in a 5-column grid
 ############################################
 def show_advertisements(relevant_products):
+    # ➊ keep the border=True container
     with st.container(border=True):
-        st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+        # invisible anchor so we can target the container via CSS
+        st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
 
-        # st.markdown(
-        #     """
-        #       <div style="position:absolute; top:-14px; left:-14px; background-color:#e53935; color:white; font-size:14px; padding:6px 12px; border-radius:4px;">
-        #         sponsored
-        #       </div>
-        #     """,
-        #     unsafe_allow_html=True
-        # )
-        # st.markdown("<div style='text-align: center;'></div>", unsafe_allow_html=True)
+        # red badge (unchanged)
         st.markdown(
             "<div style='position:relative;'>"
             "<span style='position:absolute; top:-12px; left:-12px; "
             "background:#e53935; color:#fff; font-size:13px; "
-            "padding:4px 10px; border-radius:4px;'>sponsored</span></div>",
+            "padding:4px 10px; border-radius:4px;'>Querya Advertising</span>"
+            "</div>",
             unsafe_allow_html=True,
         )
-        n = len(relevant_products)
-        col_count = 5
-        rows = math.ceil(n / col_count)
 
+        # grid – unchanged
+        n, col_count = len(relevant_products), 5
+        rows = math.ceil(n / col_count)
         for r in range(rows):
-            row_cols = st.columns(col_count, gap="small")
+            cols = st.columns(col_count, gap="small")
             for c in range(col_count):
                 idx = r * col_count + c
-                if idx >= n:
-                    break
-                product = relevant_products[idx]
-                with row_cols[c]:
-                    show_product_item(
-                        product,
-                        link_type="ad",
-                        show_image=True,
-                        orientation="vertical",  # picture on top
-                    )
-                    # st.markdown(f"""
-                    # <div style="flex-shrink:0; margin-right:8px;">
-                    #   <img src="{product['image_url']}"
-                    #        style="width:80px; height:80px; object-fit:contain;" />
-                    # </div>
-                    # <div style="display:flex; flex-direction:column; justify-content:center;">
-                    # """, unsafe_allow_html=True)
-                    #
-                    # record_link_click_and_open(
-                    #     label=product["title"],
-                    #     url=product["product_url"],
-                    #     link_type="ad"
-                    # )
-                    # st.markdown("</div></div>", unsafe_allow_html=True)
+                if idx < n:
+                    with cols[c]:
+                        show_product_item(
+                            relevant_products[idx],
+                            link_type="ad",
+                            show_image=True,
+                            orientation="vertical",
+                        )
+
 
 
 ############################################
@@ -1114,7 +1175,7 @@ def show_google_search(with_ads: bool):
         st.write("**Search Results:**")
 
         for item in st.session_state.search_results:
-            show_product_item(item, link_type="organic")
+            show_product_item(item, link_type="organic",show_image=True,image_position="below")
 
             if item["desc"]:
                 st.write(item["desc"])
