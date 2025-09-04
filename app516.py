@@ -327,13 +327,13 @@ def render_final_survey_page():
 
         # 成功提示 + 自动跳转（JS），并提供备用 link_button
         target = get_completion_url()
-        st.success("Submitted. Redirecting to the completion page…")
-        st_javascript(f'window.location.href = "{target}";')
-        try:
-            st.link_button("If you are not redirected automatically, click here to finish.", target)
-        except Exception:
-            st.markdown(f"[If you are not redirected automatically, click here to finish.]({target})")
-        st.stop()
+        st.success("Submitted. Please click the below button to redirect to the completion page…")
+        if(st.link_button("If you are not redirected automatically, click here to finish.", target)):
+        # try:
+        #     st.link_button("If you are not redirected automatically, click here to finish.", target)
+        # except Exception:
+        #     st.markdown(f"[If you are not redirected automatically, click here to finish.]({target})")
+            st.stop()
 
 
 def render_predefined_products(prod_list, heading, link_type="organic"):
@@ -722,24 +722,7 @@ def render_product_page():
 
     # b) UI
     st.button("← Back", key="back_to_main", help="back", on_click=back_to_main)
-    # st.subheader(p["title"])
-    # # st.image(p["image_url"], use_column_width=True)
-    # st.image(p["image_url"], use_container_width=True)
-    # st.markdown(
-    #     """
-    #     <style>
-    #       /* constrain the last image rendered (Streamlit wraps it in <img>) */
-    #       img:nth-last-of-type(1) {
-    #         max-height: 300px;               /* pick any height */
-    #         object-fit: contain;             /* keep aspect ratio */
-    #       }
-    #     </style>
-    #     """,
-    #     unsafe_allow_html=True,
-    # )
-    #
-    # st.markdown(p["page_description"])
-    # st.markdown("---")
+
     # 3 columns: image | info/specs | buy box
     col_img, col_info, col_buy = st.columns([4, 5, 3])
 
@@ -759,8 +742,8 @@ def render_product_page():
     # Middle: description + specs table (if provided)
     with col_info:
         # short description first
-        if p.get("description"):
-            st.write(p["description"])
+        # if p.get("description"):
+        #     st.write(p["description"])
         # longer “About this item”
         if p.get("page_description"):
             with st.expander("About this item", expanded=True):
@@ -1404,7 +1387,7 @@ def main():
             return
 
         # 其余正常路由
-        variant = st.session_state.get("variant", 4)  # 容错：若未分配就临时给个值
+        variant = st.session_state.get("variant", 1)  # 容错：若未分配就临时给个值
         if variant == 1:
             show_deepseek_recommendation(with_ads=False)
         elif variant == 2:
