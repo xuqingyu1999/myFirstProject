@@ -328,7 +328,7 @@ def render_final_survey_page():
         # 成功提示 + 自动跳转（JS），并提供备用 link_button
         target = get_completion_url()
         st.success("Submitted. Please click the below button to redirect to the completion page…")
-        if(st.link_button("If you are not redirected automatically, click here to finish.", target)):
+        if(st.link_button("Please click here to redirect.", target)):
         # try:
         #     st.link_button("If you are not redirected automatically, click here to finish.", target)
         # except Exception:
