@@ -328,7 +328,7 @@ def render_final_survey_page():
         # 成功提示 + 自动跳转（JS），并提供备用 link_button
         target = get_completion_url()
         st.success("Submitted. Please click the below button to redirect to the completion page…")
-        if(st.link_button("Please click here to redirect.", target)):
+        if(st.link_button("If you are not redirected automatically, click here to finish.", target)):
         # try:
         #     st.link_button("If you are not redirected automatically, click here to finish.", target)
         # except Exception:
@@ -365,7 +365,7 @@ PRODUCT_CATALOG = {
         "title": "Nordic Naturals Ultimate Omega",
         "product_url": "https://www.amazon.com/Nordic-Naturals-Ultimate-Support-Healthy/dp/B002CQU564",
         "image_url": "https://m.media-amazon.com/images/I/61x5u8LMFWL._AC_SL1000_.jpg",
-        "price": "¥468",
+        "price": "$193.4",
         "specs": {
             "Brand": "Nordic Naturals",
             "Flavor": "Lemon",
@@ -381,7 +381,7 @@ PRODUCT_CATALOG = {
     "WHC UnoCardio 1000": {
         "id": "fish_02",
         "title": "WHC UnoCardio 1000",
-        "price": "¥150",
+        "price": "$194.1",
         "specs": {
             "Brand": "WHC",
             "Flavor": "Natrual Orange",
@@ -399,7 +399,7 @@ PRODUCT_CATALOG = {
     "Now Foods Ultra Omega-3": {
         "id": "fish_03",
         "title": "Now Foods Ultra Omega-3",
-        "price": "¥150",
+        "price": "$194.8",
         "specs": {
             "Brand": "Now Foods",
             "Flavor": "Unflavoured",
@@ -417,7 +417,7 @@ PRODUCT_CATALOG = {
     "Blackmores OMEGA BRAIN Caps 60s": {
         "id": "fish_04",
         "title": "Blackmores OMEGA BRAIN Caps 60s",
-        "price": "¥141",
+        "price": "$193.9",
         "specs": {
             "Brand": "Blackmores",
             "Flavor": "Lutein",
@@ -435,7 +435,7 @@ PRODUCT_CATALOG = {
     "Möller’s Norwegian Cod-Liver Oil": {
         "id": "fish_05",
         "title": "Möller’s Norwegian Cod-Liver Oil",
-        "price": "¥37.9",
+        "price": "$193.15",
         "specs": {
             "Brand": "Möller’s",
             "Flavor": "Lofoten",
@@ -598,7 +598,7 @@ PRODUCTS_DATA = {
         {
             "id": "fish_06",
             "title": "omega3 Fish Oil",
-            "price": "$44.95",
+            "price": "$63.95",
             "specs": {
                 "Brand": "MAV NUTRITION",
                 "Flavor": "Lemon",
@@ -615,7 +615,7 @@ PRODUCTS_DATA = {
         {
             "id": "fish_07",
             "title": "Swisse Fish Oil Soft Capsules",
-            "price": "$33.75",
+            "price": "$64.13",
             "specs": {
                 "Brand": "Swisse",
                 "Flavor": "Unflavored",
@@ -632,7 +632,7 @@ PRODUCTS_DATA = {
         {
             "id": "fish_08",
             "title": "GNC Fish Oil",
-            "price": "$45",
+            "price": "$64",
             "specs": {
                 "Brand": "GNC",
                 "Flavor": "Unflavored",
@@ -649,7 +649,7 @@ PRODUCTS_DATA = {
         {
             "id": "fish_09",
             "title": "Viva Naturals Fish Oil",
-            "price": "$46.13",
+            "price": "$63.75",
             "specs": {
                 "Brand": "Viva Naturals",
                 "Flavor": "Lemon",
@@ -666,7 +666,7 @@ PRODUCTS_DATA = {
         {
             "id": "fish_10",
             "title": "Nature's Bounty Fish Oil",
-            "price": "¥148",
+            "price": "$63.5",
             "specs": {
                 "Brand": "Nature's Bounty",
                 "Flavor": "fish oil,fish",
@@ -1161,7 +1161,7 @@ def show_google_search(with_ads: bool):
                     "title": "Nordic Naturals Ultimate Omega  ",
                     "product_url": "https://www.amazon.com/Nordic-Naturals-Ultimate-Support-Healthy/dp/B002CQU564/ref=sr_1_1?content-id=amzn1.sym.c9738cef-0b5a-4096-ab1b-6af7c45832cd%3Aamzn1.sym.c9738cef-0b5a-4096-ab1b-6af7c45832cd&dib=eyJ2IjoiMSJ9.EmMg0Sjrk3Up1-B8Uq6XmXPfqBR6LsN4xh_xk9FkohcxjUGjjtl8VDmFPAv02s7DdvP4IMVJlYCiu4xLS3tkFzqAjY8zzLpTcrQiGDBHfSlCICd1rxDQrjuX09VNQDqQLzn3cHDWmdL3cWFyPa6GoFGZn3Y4_gA0M70XM89DcYOwpBeQlrC5yad9lab17AwZgciNRLxb8byU-LfuW17zz3q-IozuDG-egQAIeXgugVoJ8WRIvJz3NkILl22JMYtajLueBHt6DzsSWXw0pyyU1wzGr_pw1-I-LzakONQMKjk.5XQSZpgWB9fgxSBUCDKvd3csceCcXwJ8hgXGTLOIUrg&dib_tag=se&keywords=Nordic%2BNaturals%2BUltimate%2BOmega%2BCognition&pd_rd_r=dbeef994-8b31-4a6a-965d-1774b9bbb5c4&pd_rd_w=oTInk&pd_rd_wg=3hsHS&qid=1747570281&sr=8-1&th=1",
                     "site": "www.iherb.com",
-                    "price": "¥468",
+                    "price": "$193.4",
                     "specs": {
                         "Brand": "Nordic Naturals",
                         "Flavor": "Lemon",
@@ -1179,7 +1179,7 @@ def show_google_search(with_ads: bool):
                     "title": "WHC UnoCardio 1000 ",
                     "product_url": "https://www.amazon.com/stores/page/29B9D3D0-5A5E-4EEA-A0A2-D812CA2F8559/?_encoding=UTF8&store_ref=SB_A076637421Z7I7ERZ0TXQ-A03352931L0DK4Z7CLDKO&pd_rd_plhdr=t&aaxitk=49fae88956cfec31cfd29cac8b8abde1&hsa_cr_id=0&lp_asins=B00QFTGSK6%2CB01MQJZI9D%2CB07NLCBPGN&lp_query=WHC%20UnoCardio%201000&lp_slot=desktop-hsa-3psl&ref_=sbx_be_s_3psl_mbd_mb0_logo&pd_rd_w=kHhnR&content-id=amzn1.sym.5594c86b-e694-4e3e-9301-a074f0faf98a%3Aamzn1.sym.5594c86b-e694-4e3e-9301-a074f0faf98a&pf_rd_p=5594c86b-e694-4e3e-9301-a074f0faf98a&pf_rd_r=J95ESAZ01FFJGKDH15S5&pd_rd_wg=udhtB&pd_rd_r=1ca75ded-9d8a-4db4-9e02-4051fdc574f2",
                     "site": "www.whc.clinic",
-                    "price": "¥150",
+                    "price": "$194.1",
                     "specs": {
                         "Brand": "WHC",
                         "Flavor": "Natrual Orange",
@@ -1197,6 +1197,7 @@ def show_google_search(with_ads: bool):
                     "title": "Now Foods Ultra Omega-3",
                     "product_url": "https://www.amazon.com/NOW-Supplements-Molecularly-Distilled-Softgels/dp/B0BGQR8KSG/ref=sr_1_1?crid=1WK5FQS4N6VT9&dib=eyJ2IjoiMSJ9.sczFj7G5tzaluW3utIDJFvN3vRVXIKN8OW6iAI1rL8RiGXrbNcV75KmT0QHEw_-mrjN9Y2Z_QXZcyi9A3KwDB5TpToVICSiFPa7RnnItgqpDWW7DzU2ECbX73MLiBO0nOBcQe4If9EV_QeFtgmERZF360mEcTJ3ZfaxrOKNzI8A.dUyPZz9HZwZJIqkDLMtL5snAfj0y8Ayu3PNq8Ugt-WU&dib_tag=se&keywords=Now%2BFoods%2BUltra%2BOmega-3&qid=1747669011&sprefix=now%2Bfoods%2Bultra%2Bomega-3%2Caps%2C677&sr=8-1&th=1",
                     "site": "www.iherb.com",
+                    "price": "$194.8",
                     "specs": {
                         "Brand": "Now Foods",
                         "Flavor": "Unflavoured",
@@ -1214,7 +1215,7 @@ def show_google_search(with_ads: bool):
                     "title": "Blackmores Triple-Strength Fish Oil",
                     "product_url": "https://www.amazon.com.au/Blackmores-Omega-Triple-Concentrated-Capsules/dp/B0773JF7JX?th=1",
                     "site": "vivanaturals.com",
-                    "price": "¥141",
+                    "price": "$193.9",
                     "specs": {
                         "Brand": "Blackmores",
                         "Flavor": "Lutein",
@@ -1232,7 +1233,7 @@ def show_google_search(with_ads: bool):
                     "title": "Möller’s Norwegian Cod-Liver Oil",
                     "product_url": "https://www.amazon.com.be/-/en/Mollers-Omega-Norwegian-Cod-Liver-Pruners/dp/B074XB9RNH?language=en_GB",
                     "site": "www.mollers.no",
-                    "price": "¥37.9",
+                    "price": "$193.15",
                     "specs": {
                         "Brand": "Möller’s",
                         "Flavor": "Lofoten",
