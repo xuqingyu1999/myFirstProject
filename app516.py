@@ -273,49 +273,225 @@ def render_instructions_page():
         st.rerun()
 
 
+# def render_final_survey_page():
+#     st.title("Final Survey")
+#
+#     with st.form("final_survey"):
+#         st.markdown("Please spend 30 seconds to answer the questions below.")
+#
+#         # —— demographics ——
+#         age = st.number_input("Age", min_value=18, max_value=99, value=25, step=1)
+#         gender = st.radio("Gender", ["Male", "Female", "Other/Prefer not to say"])
+#         edu = st.selectbox("Education", ["High school or below", "Associate’s/Bachelor’s", "Master’s", "Doctorate or above"])
+#
+#         # —— experience & evaluation ——
+#         online_freq = st.selectbox("Online shopping frequency",
+#                                    ["Rarely", "Occasionally", "A few times per month", "A few times per week / more frequently"])
+#         ai_exp = st.selectbox("Familiarity with Generative AI / AI assistants",
+#                               ["Not familiar", "Somewhat familiar", "Quite familiar", "Very familiar"])
+#
+#         sat = st.slider("Satisfaction (1–7)", 1, 7, 5)
+#         trust = st.slider("Trust (1–7)", 1, 7, 5)
+#         relevance = st.slider("Relevance (1–7)", 1, 7, 5)
+#         ease = st.slider("Ease of Use (1–7)", 1, 7, 5)
+#
+#         noticed_ads = st.radio("Did you notice any sponsored content/ads?", ["Yes", "No", "Not sure"])
+#         comments = st.text_area("Other comments (Optional)")
+#
+#         submitted = st.form_submit_button("Submit")
+#
+#     if submitted:
+#         answers = {
+#             "age": age,
+#             "gender": gender,
+#             "education": edu,
+#             "online_freq": online_freq,
+#             "ai_exp": ai_exp,
+#             "satisfaction": sat,
+#             "trust": trust,
+#             "relevance": relevance,
+#             "ease": ease,
+#             "noticed_ads": noticed_ads,
+#             "comments": comments,
+#             "variant": st.session_state.get("variant"),
+#         }
+#         # 以 JSON 字符串写到 url 字段，便于一次性存档
+#         save_to_gsheet({
+#             "id":        st.session_state.prolific_id,
+#             "start":     st.session_state.start_time,
+#             "timestamp": datetime.now().isoformat(),
+#             "type":      "survey",
+#             "title":     "final_survey",
+#             "url":       json.dumps(answers, ensure_ascii=False)
+#         })
+#
+#         # 成功提示 + 自动跳转（JS），并提供备用 link_button
+#         target = get_completion_url()
+#         st.success("Submitted. Please click the below button to redirect to the completion page…")
+#         if(st.link_button("If you are not redirected automatically, click here to finish.", target)):
+#         # try:
+#         #     st.link_button("If you are not redirected automatically, click here to finish.", target)
+#         # except Exception:
+#         #     st.markdown(f"[If you are not redirected automatically, click here to finish.]({target})")
+#             st.success("Session ended. Thank you!")
+#             st.stop()
+
+
 def render_final_survey_page():
     st.title("Final Survey")
 
+    # Legend
+    st.caption("Scale anchor: 1 = Strongly disagree … 7 = Strongly agree")
+
+    # 7-point horizontal Likert with question ABOVE
+    def likert7(question: str, key: str) -> int | None:
+        return st.radio(
+            question,
+            options=[1, 2, 3, 4, 5, 6, 7],
+            index=None,                 # <- no default
+            horizontal=True,
+            key=key
+        )
+
+    def is_blank(x) -> bool:
+        return x is None or (isinstance(x, str) and x.strip() == "")
+
     with st.form("final_survey"):
-        st.markdown("Please spend 30 seconds to answer the questions below.")
+        st.markdown(
+            "Please complete all questions below. "
+            "**All items are required.**"
+        )
 
-        # —— demographics ——
-        age = st.number_input("Age", min_value=18, max_value=99, value=25, step=1)
-        gender = st.radio("Gender", ["Male", "Female", "Other/Prefer not to say"])
-        edu = st.selectbox("Education", ["High school or below", "Associate’s/Bachelor’s", "Master’s", "Doctorate or above"])
+        # ---------------- Demographics ----------------
+        st.markdown("### Demographics")
+        age_str = st.text_input("Age (18–99)", value="", key="demo_age_text")
+        gender = st.radio("Gender", ["Male", "Female", "Other / Prefer not to say"],
+                          index=None, key="demo_gender")
+        edu = st.selectbox("Highest Education",
+                           ["High school or below", "Bachelor", "Master", "Doctorate"],
+                           index=None, placeholder="Select…", key="demo_edu")
+        online_freq = st.selectbox("Online Shopping Frequency",
+                                   ["Rarely", "Occasionally", "Several times a month", "Several times a week or more"],
+                                   index=None, placeholder="Select…", key="demo_online_freq")
+        ai_exp = st.selectbox("Familiarity with Generative AI / AI Assistants",
+                              ["Not familiar", "Somewhat familiar", "Familiar", "Very familiar"],
+                              index=None, placeholder="Select…", key="demo_ai_exp")
 
-        # —— experience & evaluation ——
-        online_freq = st.selectbox("Online shopping frequency",
-                                   ["Rarely", "Occasionally", "A few times per month", "A few times per week / more frequently"])
-        ai_exp = st.selectbox("Familiarity with Generative AI / AI assistants",
-                              ["Not familiar", "Somewhat familiar", "Quite familiar", "Very familiar"])
+        st.markdown("---")
 
-        sat = st.slider("Satisfaction (1–7)", 1, 7, 5)
-        trust = st.slider("Trust (1–7)", 1, 7, 5)
-        relevance = st.slider("Relevance (1–7)", 1, 7, 5)
-        ease = st.slider("Ease of Use (1–7)", 1, 7, 5)
+        # ---------------- Scales (7-point Likert; all required) ----------------
+        st.markdown("### Scales (7-point Likert)")
 
-        noticed_ads = st.radio("Did you notice any sponsored content/ads?", ["Yes", "No", "Not sure"])
-        comments = st.text_area("Other comments (Optional)")
+        # Satisfaction (3)
+        st.markdown("**Satisfaction**")
+        sat1 = likert7("I am satisfied with the overall experience of using this system.", "sat1")
+        sat2 = likert7("The results met my expectations.", "sat2")
+        sat3 = likert7("If I could choose again, I would still use this system.", "sat3")
 
-        submitted = st.form_submit_button("Submit")
+        # Trust (3)
+        st.markdown("**Trust**")
+        tr1 = likert7("I trust the results provided by this system.", "tr1")
+        tr2 = likert7("I believe the system acts in the interest of the user.", "tr2")
+        tr3 = likert7("I believe the system would not intentionally mislead me.", "tr3")
 
+        # Relevance (3)
+        st.markdown("**Relevance**")
+        rel1 = likert7("The returned products were highly relevant to my needs.", "rel1")
+        rel2 = likert7("The results accurately reflected my query intention.", "rel2")
+        rel3 = likert7("Irrelevant or noisy results were minimal.", "rel3")
+
+        # Ease of Use (3)
+        st.markdown("**Ease of Use**")
+        ease1 = likert7("The interface was easy to use overall.", "ease1")
+        ease2 = likert7("Learning to operate this system was easy for me.", "ease2")
+        ease3 = likert7("Completing the task required little effort.", "ease3")
+
+        # Ad perception (3) + noticed_ads
+        st.markdown("**Ad Perception**")
+        ad1 = likert7("I clearly recognized which items were sponsored content/ads.", "ad1")
+        ad2 = likert7("Ads did not interfere with my browsing experience.", "ad2")
+        ad3 = likert7("The ads shown were relevant to my needs.", "ad3")
+        noticed_ads = st.radio("Did you notice sponsored content/ads during this task?",
+                               ["Yes", "No", "Not sure"], index=None, key="noticed_ads")
+
+        # Intention (2)
+        st.markdown("**Intention**")
+        inten1 = likert7("I would like to use this system again in the future.", "inten1")
+        inten2 = likert7("I would consider purchasing products shown in the results.", "inten2")
+
+        comments = st.text_area("Other comments or suggestions (optional)", key="open_comments")
+
+        submitted = st.form_submit_button("Submit & Redirect")
+
+    # ---------------- Validation & submit ----------------
     if submitted:
-        answers = {
-            "age": age,
+        # Validate age input
+        age_val = None
+        age_err = None
+        if is_blank(age_str):
+            age_err = "Please enter your age."
+        else:
+            try:
+                age_val = int(age_str.strip())
+                if age_val < 18 or age_val > 99:
+                    age_err = "Age must be between 18 and 99."
+            except Exception:
+                age_err = "Age must be a whole number."
+
+        # Required fields map
+        required_map = {
+            "Gender": gender,
+            "Highest Education": edu,
+            "Online Shopping Frequency": online_freq,
+            "Familiarity with Generative AI": ai_exp,
+            # Likert items
+            "Satisfaction Q1": sat1, "Satisfaction Q2": sat2, "Satisfaction Q3": sat3,
+            "Trust Q1": tr1, "Trust Q2": tr2, "Trust Q3": tr3,
+            "Relevance Q1": rel1, "Relevance Q2": rel2, "Relevance Q3": rel3,
+            "Ease of Use Q1": ease1, "Ease of Use Q2": ease2, "Ease of Use Q3": ease3,
+            "Ad Perception Q1": ad1, "Ad Perception Q2": ad2, "Ad Perception Q3": ad3,
+            "Noticed Ads": noticed_ads,
+            "Intention Q1": inten1, "Intention Q2": inten2,
+        }
+        missing = [label for label, val in required_map.items() if is_blank(val)]
+
+        if age_err or missing:
+            if age_err:
+                st.error(age_err)
+            if missing:
+                st.error("Please complete all required questions: " + ", ".join(missing))
+                st.warning("Your responses have not been submitted. Please answer the missing items above.")
+            return  # keep the form for corrections
+
+        # Compute means
+        def mean(vals): return round(sum(vals) / len(vals), 3)
+
+        scores = {
+            "satisfaction_mean": mean([sat1, sat2, sat3]),
+            "trust_mean":        mean([tr1, tr2, tr3]),
+            "relevance_mean":    mean([rel1, rel2, rel3]),
+            "ease_mean":         mean([ease1, ease2, ease3]),
+            "ad_perception_mean":mean([ad1, ad2, ad3]),
+            "intention_mean":    mean([inten1, inten2]),
+        }
+
+        demographics = {
+            "age": age_val,
             "gender": gender,
             "education": edu,
             "online_freq": online_freq,
             "ai_exp": ai_exp,
-            "satisfaction": sat,
-            "trust": trust,
-            "relevance": relevance,
-            "ease": ease,
             "noticed_ads": noticed_ads,
-            "comments": comments,
-            "variant": st.session_state.get("variant"),
         }
-        # 以 JSON 字符串写到 url 字段，便于一次性存档
+
+        answers = {
+            "variant": st.session_state.get("variant"),
+            "demographics": demographics,
+            "scores": scores,
+            "comments": comments,
+        }
+
+        # Log & redirect
         save_to_gsheet({
             "id":        st.session_state.prolific_id,
             "start":     st.session_state.start_time,
@@ -325,16 +501,12 @@ def render_final_survey_page():
             "url":       json.dumps(answers, ensure_ascii=False)
         })
 
-        # 成功提示 + 自动跳转（JS），并提供备用 link_button
         target = get_completion_url()
         st.success("Submitted. Please click the below button to redirect to the completion page…")
-        if(st.link_button("If you are not redirected automatically, click here to finish.", target)):
-        # try:
-        #     st.link_button("If you are not redirected automatically, click here to finish.", target)
-        # except Exception:
-        #     st.markdown(f"[If you are not redirected automatically, click here to finish.]({target})")
+        if (st.link_button("If you are not redirected automatically, click here to finish.", target)):
             st.success("Session ended. Thank you!")
             st.stop()
+
 
 
 def render_predefined_products(prod_list, heading, link_type="organic"):
@@ -1057,10 +1229,26 @@ def show_deepseek_recommendation(with_ads: bool):
         show_advertisements(st.session_state.current_ads)
 
     # If first message not yet
+    def to_base64(path: str) -> str:
+        return base64.b64encode(Path(path).read_bytes()).decode()
     if not st.session_state.first_message_submitted:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            user_first_input = st.text_input("**Please enter your message:**")
+        # col1, col2, col3 = st.columns([1, 2, 1])
+        # with col2:
+        try:
+            logo_b64 = to_base64("querya.png")
+            st.markdown(
+                f"""
+                <div style="text-align:center; margin-top:20px;">
+                    <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        except:
+            st.write("Querya Rec")
+
+        # query = st.text_input("", placeholder="Input Key Words for Search Here")
+        user_first_input = st.text_input("", placeholder="Please enter your message:")
 
         if user_first_input:
             st.session_state.history.append(("user", user_first_input))
@@ -1351,53 +1539,52 @@ def show_google_search(with_ads: bool):
 # Main App Flow
 ############################################
 def main():
-    with streamlit_analytics.track():
-        # A) Prolific ID 阶段
-        if st.session_state.stage == "pid":
-            st.title("Welcome!")
-            pid = st.text_input("Please enter your Prolific ID:")
-            if st.button("Confirm"):
-                if pid.strip():
-                    st.session_state.prolific_id = pid.strip()
-                    # 记录
-                    save_to_gsheet({
-                        "id":        st.session_state.prolific_id,
-                        "start":     st.session_state.start_time,
-                        "timestamp": datetime.now().isoformat(),
-                        "type":      "pid_entered",
-                        "title":     "pid_ok",
-                        "url":       " "
-                    })
-                    st.session_state.stage = "instructions"
-                    st.rerun()
-            st.stop()
 
-        # B) 说明页阶段
-        if st.session_state.stage == "instructions":
-            render_instructions_page()
-            st.stop()
+    if st.session_state.stage == "pid":
+        st.title("Welcome!")
+        pid = st.text_input("Please enter your Prolific ID:")
+        if st.button("Confirm"):
+            if pid.strip():
+                st.session_state.prolific_id = pid.strip()
+                # 记录
+                save_to_gsheet({
+                    "id":        st.session_state.prolific_id,
+                    "start":     st.session_state.start_time,
+                    "timestamp": datetime.now().isoformat(),
+                    "type":      "pid_entered",
+                    "title":     "pid_ok",
+                    "url":       " "
+                })
+                st.session_state.stage = "instructions"
+                st.rerun()
+        st.stop()
 
-        # C) 问卷阶段
-        if st.session_state.stage == "survey":
-            render_final_survey_page()
-            st.stop()
+    # B) 说明页阶段
+    if st.session_state.stage == "instructions":
+        render_instructions_page()
+        st.stop()
 
-        # D) 实验阶段（四个 condition）
-        # 如果此时用户点进了单品页
-        if st.session_state.page == "product" and st.session_state.current_product:
-            render_product_page()
-            return
+    # C) 问卷阶段
+    if st.session_state.stage == "survey":
+        render_final_survey_page()
+        st.stop()
 
-        # 其余正常路由
-        variant = st.session_state.get("variant", 1)  # 容错：若未分配就临时给个值
-        if variant == 1:
-            show_deepseek_recommendation(with_ads=False)
-        elif variant == 2:
-            show_deepseek_recommendation(with_ads=True)
-        elif variant == 3:
-            show_google_search(with_ads=False)
-        elif variant == 4:
-            show_google_search(with_ads=True)
+    # D) 实验阶段（四个 condition）
+    # 如果此时用户点进了单品页
+    if st.session_state.page == "product" and st.session_state.current_product:
+        render_product_page()
+        return
+
+    # 其余正常路由
+    variant = st.session_state.get("variant", 1)  # 容错：若未分配就临时给个值
+    if variant == 1:
+        show_deepseek_recommendation(with_ads=False)
+    elif variant == 2:
+        show_deepseek_recommendation(with_ads=True)
+    elif variant == 3:
+        show_google_search(with_ads=False)
+    elif variant == 4:
+        show_google_search(with_ads=True)
 
 
 
