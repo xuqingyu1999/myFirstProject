@@ -23,6 +23,7 @@ from streamlit_javascript import st_javascript
 import json
 import webbrowser
 
+
 # ====== Completion link（可放到环境变量或 secrets）======
 def get_completion_url():
     try:
@@ -30,8 +31,11 @@ def get_completion_url():
     except Exception:
         return os.getenv("COMPLETION_URL") or "https://www.prolific.com/"
 
+
 # ====== 实验阶段机位：'pid' -> 'instructions' -> 'experiment' -> 'survey' ======
 st.session_state.setdefault("stage", "pid")  # 初始阶段：填写 Prolific ID
+
+
 # 先不分配 variant，等点 Next 再分；如果你希望一进来就分配，移动到这里也行
 
 def get_credentials_from_secrets():
@@ -39,6 +43,8 @@ def get_credentials_from_secrets():
     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
     
+    return creds_dict
+
     return creds_dict
 
 
@@ -72,11 +78,18 @@ def save_to_gsheet(data):
             time.sleep(0.5)
     return ''
 
+
 # simple in‑memory router
-st.session_state.setdefault("page", "main")         # "main" | "product"
+st.session_state.setdefault("page", "main")  # "main" | "product"
 st.session_state.setdefault("current_product", {})  # dict of the product being viewed
 
 st.session_state.setdefault("favorites", {})
+
+# ===== Variant assignment happens immediately (once per session) =====
+if "variant" not in st.session_state:
+    # 1: AI w/o ads, 2: AI + ads, 3: Search w/o ads, 4: Search + ads
+    st.session_state.variant = random.randint(1, 4)
+
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
@@ -134,7 +147,6 @@ div.stButton > button:hover {
 """
 st.markdown(LINK_BUTTON_CSS, unsafe_allow_html=True)
 
-
 SPEC_TABLE_CSS = """
 <style>
 .table-specs { width:100%; border-collapse:collapse; }
@@ -144,8 +156,6 @@ SPEC_TABLE_CSS = """
 </style>
 """
 st.markdown(SPEC_TABLE_CSS, unsafe_allow_html=True)
-
-
 
 st.markdown(
     """
@@ -167,12 +177,16 @@ st.markdown(
 )
 
 
-
-
-
 ############################################
 # 2) Regex-based parser for [Title](URL) links in LLM text
 ############################################
+def get_variant_flags():
+    """Return (variant, is_ai, with_ads, group_label)."""
+    v = st.session_state.get("variant", 4)
+    is_ai = v in (1, 2)
+    with_ads = v in (2, 4)
+    group_label = "AI Assistant" if is_ai else "Search Engine"
+    return v, is_ai, with_ads, group_label
 
 def render_specs_table(specs: dict | None):
     if not specs:
@@ -181,6 +195,7 @@ def render_specs_table(specs: dict | None):
         f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in specs.items()
     )
     st.markdown(f"<table class='table-specs'>{rows}</table>", unsafe_allow_html=True)
+
 
 def parse_markdown_links(source):
     """
@@ -215,10 +230,10 @@ def parse_markdown_links(source):
             segs.append({"type": "text", "content": text[last_end:start]})
 
         label, url = m.group(1).strip(), m.group(2).strip()
-        prod = PRODUCT_CATALOG.get(label)           # may be None
+        prod = PRODUCT_CATALOG.get(label)  # may be None
         seg = {"type": "link", "label": label, "url": url}
         if prod:
-            seg.update(prod)                        # enrich if in catalogue
+            seg.update(prod)  # enrich if in catalogue
             seg["product_url"] = url
         segs.append(seg)
         last_end = end
@@ -226,7 +241,6 @@ def parse_markdown_links(source):
     if last_end < len(text):
         segs.append({"type": "text", "content": text[last_end:]})
     return segs
-
 
 
 def display_parsed_markdown(source, link_type="organic"):
@@ -246,188 +260,498 @@ def display_parsed_markdown(source, link_type="organic"):
         else:  # non‑product link
             st.markdown(f'[{seg["label"]}]({seg["url"]})')
 
+
 def render_instructions_page():
-    st.title("Instructions")
+    v, is_ai, with_ads, group_label = get_variant_flags()
+    # st.title(f"Instructions — {group_label} condition")
 
-    st.markdown("""
-**How to complete this study:**
-1. You will enter a shopping scenario.
-2. On the page, you can **type questions/keywords** and **click on products** to view details。  
-3. After browsing freely, click **Finish / End Session** in the upper-right corner to proceed to the **final survey**.
-4. After submitting the survey, you will be**automatically redirected** to the completion link (Prolific completion-code page).
-    """)
-    st.info("Tip: Please interact naturally, as you would in a real shopping experience.")
+    if is_ai:
+        st.markdown("""
+        ### 📝 Instructions
 
-    if st.button("Next / Start", key="btn_next_to_experiment"):
-        # 随机分配四个 condition（1..4）
-        st.session_state.variant = random.randint(1, 4)
+        Imagine you are shopping for a **fish oil supplement**.  
+        To help you decide which product to purchase, you will use an AI chatbot (“**Querya**”) to get some recommended products to consider.
+
+        ---
+
+        **Please follow these steps:**
+
+        1. **Click the `Next / Start` button** below to open the AI chatbot.  
+
+        2. **Ask for product recommendations.** For example, you might type:  
+           - “Can you recommend some fish oil supplements?”  
+           - “Please recommend some fish oils.”  
+
+           You can also use any similar phrasing you would naturally use when chatting with an assistant.
+
+        3. **Treat this task as if you were genuinely shopping for yourself.**  
+           Feel free to explore the recommended products by clicking their links and viewing them naturally, just as you would in real life.
+
+        4. **If you’re interested in any product**, you may click the **`Add to Cart`** button at the top-right corner of its page.
+
+        5. **When you’re done browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.
+
+        6. **Finally**, complete a short questionnaire about your experience.
+        """)
+
+    else:
+        st.markdown("""
+                ### 📝 Instructions
+
+                Imagine you are shopping for a **fish oil supplement**.  
+                To help you decide which product to purchase, you will use a search engine (“**Querya**”) to find some recommended products.
+
+                ---
+
+                **Please follow these steps:**
+
+                1. **Click the `Next / Start` button** below to open the AI chatbot.  
+
+                2. **Ask for product recommendations.** For example, you might type:  
+                   - “Fish oil supplements”  
+                   - “Fish oils”  
+                    
+                   Or use any other terms you would naturally type into a search engine.
+
+                3. **Treat this task as if you were genuinely shopping for yourself.**  
+                   Feel free to explore the recommended products by clicking the links and browsing naturally, just as you would in real life.
+
+                4. **If you’re interested in a product**, you may click the **`Add to Cart`** button at the top-right corner of its page.
+
+                5. **When you’re finished browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the results page.
+
+                6. **Finally**, complete a short questionnaire about your experience.
+                """)
+
+    # if with_ads:
+    #     st.info("This condition **may include sponsored results** labeled “Sponsored”. Please browse naturally.")
+    #
+    # st.warning("Estimated time: about **2–3 minutes**. Please interact naturally as if you were shopping online.")
+
+    if st.button("Start the task"):
+        # Optional: log variant explicitly once PID is known
         save_to_gsheet({
-            "id":        st.session_state.prolific_id,
-            "start":     st.session_state.start_time,
+            "id":        st.session_state.get("prolific_id", "unknown"),
+            "start":     st.session_state.get("start_time", datetime.now().isoformat()),
             "timestamp": datetime.now().isoformat(),
             "type":      "enter_experiment",
-            "title":     f"assigned_variant={st.session_state.variant}",
+            "title":     f"{group_label} | ads={with_ads}",
             "url":       " "
         })
         st.session_state.stage = "experiment"
         st.rerun()
 
 
+
 # def render_final_survey_page():
 #     st.title("Final Survey")
 #
+#     # Legend
+#     st.caption("Scale anchor: 1 = Strongly disagree … 7 = Strongly agree")
+#
+#     # 7-point horizontal Likert with question ABOVE
+#     def likert7(question: str, key: str) -> int | None:
+#         return st.radio(
+#             question,
+#             options=[1, 2, 3, 4, 5, 6, 7],
+#             index=None,  # <- no default
+#             horizontal=True,
+#             key=key
+#         )
+#
+#     def is_blank(x) -> bool:
+#         return x is None or (isinstance(x, str) and x.strip() == "")
+#
 #     with st.form("final_survey"):
-#         st.markdown("Please spend 30 seconds to answer the questions below.")
+#         st.markdown(
+#             "Please complete all questions below. "
+#             "**All items are required.**"
+#         )
 #
-#         # —— demographics ——
-#         age = st.number_input("Age", min_value=18, max_value=99, value=25, step=1)
-#         gender = st.radio("Gender", ["Male", "Female", "Other/Prefer not to say"])
-#         edu = st.selectbox("Education", ["High school or below", "Associate’s/Bachelor’s", "Master’s", "Doctorate or above"])
+#         # ---------------- Demographics ----------------
+#         st.markdown("### Demographics")
+#         age_str = st.text_input("Age (18–99)", value="", key="demo_age_text")
+#         gender = st.radio("Gender", ["Male", "Female", "Other / Prefer not to say"],
+#                           index=None, key="demo_gender")
+#         edu = st.selectbox("Highest Education",
+#                            ["High school or below", "Bachelor", "Master", "Doctorate"],
+#                            index=None, placeholder="Select…", key="demo_edu")
+#         online_freq = st.selectbox("Online Shopping Frequency",
+#                                    ["Rarely", "Occasionally", "Several times a month", "Several times a week or more"],
+#                                    index=None, placeholder="Select…", key="demo_online_freq")
+#         ai_exp = st.selectbox("Familiarity with Generative AI / AI Assistants",
+#                               ["Not familiar", "Somewhat familiar", "Familiar", "Very familiar"],
+#                               index=None, placeholder="Select…", key="demo_ai_exp")
 #
-#         # —— experience & evaluation ——
-#         online_freq = st.selectbox("Online shopping frequency",
-#                                    ["Rarely", "Occasionally", "A few times per month", "A few times per week / more frequently"])
-#         ai_exp = st.selectbox("Familiarity with Generative AI / AI assistants",
-#                               ["Not familiar", "Somewhat familiar", "Quite familiar", "Very familiar"])
+#         st.markdown("---")
 #
-#         sat = st.slider("Satisfaction (1–7)", 1, 7, 5)
-#         trust = st.slider("Trust (1–7)", 1, 7, 5)
-#         relevance = st.slider("Relevance (1–7)", 1, 7, 5)
-#         ease = st.slider("Ease of Use (1–7)", 1, 7, 5)
+#         # ---------------- Scales (7-point Likert; all required) ----------------
+#         st.markdown("### Scales (7-point Likert)")
 #
-#         noticed_ads = st.radio("Did you notice any sponsored content/ads?", ["Yes", "No", "Not sure"])
-#         comments = st.text_area("Other comments (Optional)")
+#         # Satisfaction (3)
+#         st.markdown("**Satisfaction**")
+#         sat1 = likert7("I am satisfied with the overall experience of using this system.", "sat1")
+#         sat2 = likert7("The results met my expectations.", "sat2")
+#         sat3 = likert7("If I could choose again, I would still use this system.", "sat3")
 #
-#         submitted = st.form_submit_button("Submit")
+#         # Trust (3)
+#         st.markdown("**Trust**")
+#         tr1 = likert7("I trust the results provided by this system.", "tr1")
+#         tr2 = likert7("I believe the system acts in the interest of the user.", "tr2")
+#         tr3 = likert7("I believe the system would not intentionally mislead me.", "tr3")
 #
+#         # Relevance (3)
+#         st.markdown("**Relevance**")
+#         rel1 = likert7("The returned products were highly relevant to my needs.", "rel1")
+#         rel2 = likert7("The results accurately reflected my query intention.", "rel2")
+#         rel3 = likert7("Irrelevant or noisy results were minimal.", "rel3")
+#
+#         # Ease of Use (3)
+#         st.markdown("**Ease of Use**")
+#         ease1 = likert7("The interface was easy to use overall.", "ease1")
+#         ease2 = likert7("Learning to operate this system was easy for me.", "ease2")
+#         ease3 = likert7("Completing the task required little effort.", "ease3")
+#
+#         # Ad perception (3) + noticed_ads
+#         st.markdown("**Ad Perception**")
+#         ad1 = likert7("I clearly recognized which items were sponsored content/ads.", "ad1")
+#         ad2 = likert7("Ads did not interfere with my browsing experience.", "ad2")
+#         ad3 = likert7("The ads shown were relevant to my needs.", "ad3")
+#         noticed_ads = st.radio("Did you notice sponsored content/ads during this task?",
+#                                ["Yes", "No", "Not sure"], index=None, key="noticed_ads")
+#
+#         # Intention (2)
+#         st.markdown("**Intention**")
+#         inten1 = likert7("I would like to use this system again in the future.", "inten1")
+#         inten2 = likert7("I would consider purchasing products shown in the results.", "inten2")
+#
+#         comments = st.text_area("Other comments or suggestions (optional)", key="open_comments")
+#
+#         submitted = st.form_submit_button("Submit & Redirect")
+#
+#     # ---------------- Validation & submit ----------------
 #     if submitted:
-#         answers = {
-#             "age": age,
+#         # Validate age input
+#         age_val = None
+#         age_err = None
+#         if is_blank(age_str):
+#             age_err = "Please enter your age."
+#         else:
+#             try:
+#                 age_val = int(age_str.strip())
+#                 if age_val < 18 or age_val > 99:
+#                     age_err = "Age must be between 18 and 99."
+#             except Exception:
+#                 age_err = "Age must be a whole number."
+#
+#         # Required fields map
+#         required_map = {
+#             "Gender": gender,
+#             "Highest Education": edu,
+#             "Online Shopping Frequency": online_freq,
+#             "Familiarity with Generative AI": ai_exp,
+#             # Likert items
+#             "Satisfaction Q1": sat1, "Satisfaction Q2": sat2, "Satisfaction Q3": sat3,
+#             "Trust Q1": tr1, "Trust Q2": tr2, "Trust Q3": tr3,
+#             "Relevance Q1": rel1, "Relevance Q2": rel2, "Relevance Q3": rel3,
+#             "Ease of Use Q1": ease1, "Ease of Use Q2": ease2, "Ease of Use Q3": ease3,
+#             "Ad Perception Q1": ad1, "Ad Perception Q2": ad2, "Ad Perception Q3": ad3,
+#             "Noticed Ads": noticed_ads,
+#             "Intention Q1": inten1, "Intention Q2": inten2,
+#         }
+#         missing = [label for label, val in required_map.items() if is_blank(val)]
+#
+#         if age_err or missing:
+#             if age_err:
+#                 st.error(age_err)
+#             if missing:
+#                 st.error("Please complete all required questions: " + ", ".join(missing))
+#                 st.warning("Your responses have not been submitted. Please answer the missing items above.")
+#             return  # keep the form for corrections
+#
+#         # Compute means
+#         def mean(vals):
+#             return round(sum(vals) / len(vals), 3)
+#
+#         scores = {
+#             "satisfaction_mean": mean([sat1, sat2, sat3]),
+#             "trust_mean": mean([tr1, tr2, tr3]),
+#             "relevance_mean": mean([rel1, rel2, rel3]),
+#             "ease_mean": mean([ease1, ease2, ease3]),
+#             "ad_perception_mean": mean([ad1, ad2, ad3]),
+#             "intention_mean": mean([inten1, inten2]),
+#         }
+#
+#         demographics = {
+#             "age": age_val,
 #             "gender": gender,
 #             "education": edu,
 #             "online_freq": online_freq,
 #             "ai_exp": ai_exp,
-#             "satisfaction": sat,
-#             "trust": trust,
-#             "relevance": relevance,
-#             "ease": ease,
 #             "noticed_ads": noticed_ads,
-#             "comments": comments,
-#             "variant": st.session_state.get("variant"),
 #         }
-#         # 以 JSON 字符串写到 url 字段，便于一次性存档
+#
+#         answers = {
+#             "variant": st.session_state.get("variant"),
+#             "demographics": demographics,
+#             "scores": scores,
+#             "comments": comments,
+#         }
+#
+#         # Log & redirect
 #         save_to_gsheet({
-#             "id":        st.session_state.prolific_id,
-#             "start":     st.session_state.start_time,
+#             "id": st.session_state.prolific_id,
+#             "start": st.session_state.start_time,
 #             "timestamp": datetime.now().isoformat(),
-#             "type":      "survey",
-#             "title":     "final_survey",
-#             "url":       json.dumps(answers, ensure_ascii=False)
+#             "type": "survey",
+#             "title": "final_survey",
+#             "url": json.dumps(answers, ensure_ascii=False)
 #         })
 #
-#         # 成功提示 + 自动跳转（JS），并提供备用 link_button
 #         target = get_completion_url()
 #         st.success("Submitted. Please click the below button to redirect to the completion page…")
-#         if(st.link_button("If you are not redirected automatically, click here to finish.", target)):
-#         # try:
-#         #     st.link_button("If you are not redirected automatically, click here to finish.", target)
-#         # except Exception:
-#         #     st.markdown(f"[If you are not redirected automatically, click here to finish.]({target})")
+#         if (st.link_button("If you are not redirected automatically, click here to finish.", target)):
 #             st.success("Session ended. Thank you!")
 #             st.stop()
 
-
 def render_final_survey_page():
+    # ---- determine condition ----
+    def get_variant_flags():
+        v = st.session_state.get("variant", 4)
+        is_ai = v in (1, 2)
+        with_ads = v in (2, 4)
+        group_label = "AI Assistant" if is_ai else "Search Engine"
+        return v, is_ai, with_ads, group_label
+
+    v, is_ai, with_ads, group_label = get_variant_flags()
+    SYS_NOUN = "AI chatbot" if is_ai else "search engine"   # used in stems
+    SYS_NOUN_PLURAL = "AI chatbots" if is_ai else "search engines"
+
     st.title("Final Survey")
+    st.caption("Unless otherwise stated, use a 7‑point scale where "
+               "1 = Strongly disagree and 7 = Strongly agree.")
 
-    # Legend
-    st.caption("Scale anchor: 1 = Strongly disagree … 7 = Strongly agree")
+    # --- small CSS to keep radios compact; anchors close to the scale ---
+    st.markdown("""
+        <style>
+        div[data-testid="stRadio"] > div { gap: 0.5rem !important; }
+        .anchorrow div { text-align:center; white-space:nowrap; font-size:0.85rem; color:#666; }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # 7-point horizontal Likert with question ABOVE
-    def likert7(question: str, key: str) -> int | None:
-        return st.radio(
-            question,
-            options=[1, 2, 3, 4, 5, 6, 7],
-            index=None,                 # <- no default
-            horizontal=True,
-            key=key
-        )
-
+    # ---------- helpers ----------
     def is_blank(x) -> bool:
         return x is None or (isinstance(x, str) and x.strip() == "")
 
+    def render_anchor_row(left: str, right: str):
+        cols = st.columns(7)
+        with cols[0]:
+            st.markdown(f"<div class='anchorrow'>{left}</div>", unsafe_allow_html=True)
+        for i in range(1, 6):
+            with cols[i]:
+                st.markdown("<div class='anchorrow'>&nbsp;</div>", unsafe_allow_html=True)
+        with cols[6]:
+            st.markdown(f"<div class='anchorrow'>{right}</div>", unsafe_allow_html=True)
+
+    def likert7(question: str, key: str,
+                left_anchor="Strongly disagree", right_anchor="Strongly agree") -> int | None:
+        """Question text above, custom anchors above 1 & 7, then 1–7 horizontally (no default)."""
+
+        st.markdown(f"**{question} 1={left_anchor},7={right_anchor}**")
+        # render_anchor_row(left_anchor, right_anchor)
+        sel = st.radio("", options=[1,2,3,4,5,6,7], horizontal=True, index=None,
+                       key=key, label_visibility="collapsed")
+        st.markdown("<div style='height:0.25rem;'></div>", unsafe_allow_html=True)
+        return sel
+
+    def matrix_block(title: str, items: list[tuple[str, str]],
+                     keyprefix: str, left_anchor="Strongly disagree", right_anchor="Strongly agree"):
+        """Show anchor row once for a set; return dict {key:score}."""
+        st.markdown(f"### {title}")
+        st.markdown(f"**1={left_anchor},7={right_anchor}**")
+        # render_anchor_row(left_anchor, right_anchor)
+        results = {}
+        for k, q in items:
+            # keep each question visible above its row (Qualtrics-style matrix)
+            st.markdown(f"**{q}**")
+            results[k] = st.radio("", options=[1,2,3,4,5,6,7],
+                                  horizontal=True, index=None,
+                                  key=f"{keyprefix}_{k}", label_visibility="collapsed")
+        st.markdown("---")
+        return results
+
+    def ios_image():
+        # Try a few likely paths; ignore if missing
+        possible = [
+            "/mnt/data/2e1e965d-f6e5-49da-9166-2e2576a413ea.png",
+            "ios_overlapping_circles.png", "ios.jpg", "ioss.png"
+        ]
+        for p in possible:
+            try:
+                if os.path.exists(p):
+                    st.image(p, caption="Choose the pair that best represents your feelings.")
+                    return
+            except Exception:
+                pass
+        st.caption("Circle diagram: (image unavailable). Please still select 1–7 below.")
+
+    # ------- form begins -------
     with st.form("final_survey"):
+        st.markdown("Please complete **all** questions. There is no default selection.")
+
+        # ============= CONDITION-SPECIFIC BLOCKS =============
+
+        # 1) Trust (5 items)
+        trust_items_ai = [
+            ("trust1", f"I believe that this {SYS_NOUN} would act in my best interest."),
+            ("trust2", f"This {SYS_NOUN} is truthful and honest in its responses."),
+            ("trust3", f"This {SYS_NOUN} is competent and effective in providing information."),
+            ("trust4", f"This {SYS_NOUN} is sincere and genuine."),
+            ("trust5", f"I feel that I can rely on this {SYS_NOUN} when I need important information.")
+        ]
+        trust_items_search = [
+            ("trust1", f"I believe that this {SYS_NOUN} would act in my best interest."),
+            ("trust2", f"This {SYS_NOUN} is truthful and honest in its responses."),
+            ("trust3", f"This {SYS_NOUN} is competent and effective in providing information."),
+            ("trust4", f"This {SYS_NOUN} is sincere and genuine."),
+            ("trust5", f"I feel that I can rely on this {SYS_NOUN} when I need important information.")
+        ]
+        trust = matrix_block("Trust", trust_items_ai if is_ai else trust_items_search,
+                             keyprefix="trust")
+
+        # 2) Privacy Concern (4 items)
+        privacy_items = [
+            ("priv1", f"I am concerned that this {SYS_NOUN} collects too much personal information about me."),
+            ("priv2", f"I worry that this {SYS_NOUN} may use my personal information for purposes I have not authorized."),
+            ("priv3", f"I feel uneasy that this {SYS_NOUN} may share my personal information with others without my authorization."),
+            ("priv4", f"I am concerned that my personal information may not be securely protected from unauthorized access when using this {SYS_NOUN}."),
+        ]
+        privacy = matrix_block("Privacy Concern", privacy_items, keyprefix="privacy")
+
+        # 3) Sense of Exploitation (2 items)
+        exploit_items = [
+            ("exp1", f"I believe this {SYS_NOUN} would be exploitative in its use of my personal information."),
+            ("exp2", f"I believe this {SYS_NOUN} would take advantage of my personal information.")
+        ]
+        exploitation = matrix_block("Sense of Exploitation", exploit_items, keyprefix="exploit")
+
+        # 4) Relationship (IOS + 4 items)
+        st.markdown("### Relationship Closeness (IOS)")
         st.markdown(
-            "Please complete all questions below. "
-            "**All items are required.**"
+            f"In the pairs of circles below, one circle represents **you**, and the other represents **{SYS_NOUN_PLURAL}**. "
+            "The amount of overlap indicates closeness. Please select the pair that best represents your feelings."
+        )
+        ios_image()
+        ios_choice = st.radio(
+            "Please select the pair (1–7).",
+            options=[1,2,3,4,5,6,7], index=None, horizontal=True, key="ios_choice"
+        )
+        st.markdown("---")
+
+        rel_items = [
+            ("rel1", f"Overall, I have a warm and comfortable relationship with {SYS_NOUN_PLURAL}."),
+            ("rel2", f"Overall, I experience intimate communication with {SYS_NOUN_PLURAL}."),
+            ("rel3", f"Overall, I have a relationship of mutual understanding with {SYS_NOUN_PLURAL}."),
+            ("rel4", f"Overall, I feel emotionally close to {SYS_NOUN_PLURAL}."),
+        ]
+        relationship = matrix_block("Relationship (statements)", rel_items, keyprefix="relationship")
+
+        # 5) Familiarity with the just-used system (4 items; disagree/agree anchors)
+        fam_items = [
+            ("fam1", f"The {SYS_NOUN}’s response felt unfamiliar to me."),
+            ("fam2", f"The interaction did not align with how I usually experience similar systems."),
+            ("fam3", f"This experience did not feel typical of how platforms usually respond."),
+            ("fam4", f"Something about the interaction felt unfamiliar."),
+        ]
+        familiarity = matrix_block("Familiarity with the just-used system", fam_items, keyprefix="familiarity")
+
+        # ============= GENERAL / MANIPULATION CHECKS =============
+
+        st.markdown("### Manipulation Check")
+        mc_tool = st.radio(
+            "What did you use to seek recommended products in this study?",
+            ["An AI chatbot", "A search engine"], index=None, key="mc_tool"
+        )
+        mc_ads = st.radio(
+            "Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?",
+            ["Yes", "No"], index=None, key="mc_ads"
+        )
+        st.markdown("---")
+
+        # ============= OTHER CHECKS (group-specific anchors where needed) =============
+
+        st.markdown("### Other Checks")
+
+        fish_fam = likert7(
+            "How familiar are you with fish oil supplements?",
+            key="chk_fish_familiar",
+            left_anchor="Not familiar at all", right_anchor="Very familiar"
         )
 
-        # ---------------- Demographics ----------------
-        st.markdown("### Demographics")
-        age_str = st.text_input("Age (18–99)", value="", key="demo_age_text")
-        gender = st.radio("Gender", ["Male", "Female", "Other / Prefer not to say"],
-                          index=None, key="demo_gender")
-        edu = st.selectbox("Highest Education",
-                           ["High school or below", "Bachelor", "Master", "Doctorate"],
-                           index=None, placeholder="Select…", key="demo_edu")
-        online_freq = st.selectbox("Online Shopping Frequency",
-                                   ["Rarely", "Occasionally", "Several times a month", "Several times a week or more"],
-                                   index=None, placeholder="Select…", key="demo_online_freq")
-        ai_exp = st.selectbox("Familiarity with Generative AI / AI Assistants",
-                              ["Not familiar", "Somewhat familiar", "Familiar", "Very familiar"],
-                              index=None, placeholder="Select…", key="demo_ai_exp")
+        # attitude / experience / frequency / familiarity about the system
+        attitude = likert7(
+            f"What is your attitude toward {SYS_NOUN_PLURAL}?",
+            key="chk_attitude",
+            left_anchor="Very negative", right_anchor="Very positive"
+        )
+        experience = likert7(
+            f"How much experience do you have using {SYS_NOUN_PLURAL}?",
+            key="chk_experience",
+            left_anchor="Very little", right_anchor="Very much"
+        )
+        frequency = likert7(
+            f"How often do you use {SYS_NOUN_PLURAL}?",
+            key="chk_frequency",
+            left_anchor="Not often at all", right_anchor="Very often"
+        )
+        sys_familiar = likert7(
+            f"How familiar are you with {SYS_NOUN_PLURAL}?",
+            key="chk_sys_familiar",
+            left_anchor="Not familiar at all", right_anchor="Very familiar"
+        )
+
+        # commonness / habituation to sponsored content in this ecosystem
+        common_ads = likert7(
+            f"It is very common to see sponsored content in "
+            f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
+            key="chk_common_ads"
+        )
+        used_to_ads = likert7(
+            f"I am used to seeing sponsored content in "
+            f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
+            key="chk_used_to_ads"
+        )
 
         st.markdown("---")
 
-        # ---------------- Scales (7-point Likert; all required) ----------------
-        st.markdown("### Scales (7-point Likert)")
+        # ============= DEMOGRAPHICS =============
+        st.markdown("### Demographics (all required)")
+        age_str = st.text_input("Your age", value="", key="demo_age_text")
 
-        # Satisfaction (3)
-        st.markdown("**Satisfaction**")
-        sat1 = likert7("I am satisfied with the overall experience of using this system.", "sat1")
-        sat2 = likert7("The results met my expectations.", "sat2")
-        sat3 = likert7("If I could choose again, I would still use this system.", "sat3")
+        sex = st.radio("Your sex", ["Male", "Female"], index=None, key="demo_sex")
 
-        # Trust (3)
-        st.markdown("**Trust**")
-        tr1 = likert7("I trust the results provided by this system.", "tr1")
-        tr2 = likert7("I believe the system acts in the interest of the user.", "tr2")
-        tr3 = likert7("I believe the system would not intentionally mislead me.", "tr3")
+        edu = st.selectbox(
+            "Your educational background",
+            ["Less than high school", "High school graduate", "Bachelor or equivalent", "Master", "Doctorate"],
+            index=None, placeholder="Select…", key="demo_edu"
+        )
 
-        # Relevance (3)
-        st.markdown("**Relevance**")
-        rel1 = likert7("The returned products were highly relevant to my needs.", "rel1")
-        rel2 = likert7("The results accurately reflected my query intention.", "rel2")
-        rel3 = likert7("Irrelevant or noisy results were minimal.", "rel3")
+        ethnicity = st.selectbox(
+            "Your ethnicity",
+            ["White", "Black or African American", "American Indian or Alaska Native",
+             "Asian", "Native Hawaiian or Pacific Islander", "Other"],
+            index=None, placeholder="Select…", key="demo_ethnicity"
+        )
 
-        # Ease of Use (3)
-        st.markdown("**Ease of Use**")
-        ease1 = likert7("The interface was easy to use overall.", "ease1")
-        ease2 = likert7("Learning to operate this system was easy for me.", "ease2")
-        ease3 = likert7("Completing the task required little effort.", "ease3")
+        comments = st.text_area("Other comments (optional)", key="open_comments")
 
-        # Ad perception (3) + noticed_ads
-        st.markdown("**Ad Perception**")
-        ad1 = likert7("I clearly recognized which items were sponsored content/ads.", "ad1")
-        ad2 = likert7("Ads did not interfere with my browsing experience.", "ad2")
-        ad3 = likert7("The ads shown were relevant to my needs.", "ad3")
-        noticed_ads = st.radio("Did you notice sponsored content/ads during this task?",
-                               ["Yes", "No", "Not sure"], index=None, key="noticed_ads")
-
-        # Intention (2)
-        st.markdown("**Intention**")
-        inten1 = likert7("I would like to use this system again in the future.", "inten1")
-        inten2 = likert7("I would consider purchasing products shown in the results.", "inten2")
-
-        comments = st.text_area("Other comments or suggestions (optional)", key="open_comments")
-
+        # submit
         submitted = st.form_submit_button("Submit & Redirect")
 
-    # ---------------- Validation & submit ----------------
+    # ---------- validation & submission ----------
     if submitted:
-        # Validate age input
-        age_val = None
-        age_err = None
+        # validate age
+        age_val, age_err = None, None
         if is_blank(age_str):
             age_err = "Please enter your age."
         else:
@@ -438,22 +762,31 @@ def render_final_survey_page():
             except Exception:
                 age_err = "Age must be a whole number."
 
-        # Required fields map
-        required_map = {
-            "Gender": gender,
-            "Highest Education": edu,
-            "Online Shopping Frequency": online_freq,
-            "Familiarity with Generative AI": ai_exp,
-            # Likert items
-            "Satisfaction Q1": sat1, "Satisfaction Q2": sat2, "Satisfaction Q3": sat3,
-            "Trust Q1": tr1, "Trust Q2": tr2, "Trust Q3": tr3,
-            "Relevance Q1": rel1, "Relevance Q2": rel2, "Relevance Q3": rel3,
-            "Ease of Use Q1": ease1, "Ease of Use Q2": ease2, "Ease of Use Q3": ease3,
-            "Ad Perception Q1": ad1, "Ad Perception Q2": ad2, "Ad Perception Q3": ad3,
-            "Noticed Ads": noticed_ads,
-            "Intention Q1": inten1, "Intention Q2": inten2,
+        # collect required fields dynamically
+        required = {
+            # condition-specific blocks
+            **{f"trust_{k}": v for k,v in trust.items()},
+            **{f"privacy_{k}": v for k,v in privacy.items()},
+            **{f"exploit_{k}": v for k,v in exploitation.items()},
+            "ios_choice": ios_choice,
+            **{f"relationship_{k}": v for k,v in relationship.items()},
+            **{f"familiarity_{k}": v for k,v in familiarity.items()},
+            # general checks
+            "mc_tool": mc_tool,
+            "mc_ads": mc_ads,
+            "fish_familiar": fish_fam,
+            "attitude": attitude,
+            "experience": experience,
+            "frequency": frequency,
+            "sys_familiar": sys_familiar,
+            "common_ads": common_ads,
+            "used_to_ads": used_to_ads,
+            # demographics
+            "sex": sex,
+            "education": edu,
+            "ethnicity": ethnicity,
         }
-        missing = [label for label, val in required_map.items() if is_blank(val)]
+        missing = [name for name, val in required.items() if is_blank(val)]
 
         if age_err or missing:
             if age_err:
@@ -461,37 +794,42 @@ def render_final_survey_page():
             if missing:
                 st.error("Please complete all required questions: " + ", ".join(missing))
                 st.warning("Your responses have not been submitted. Please answer the missing items above.")
-            return  # keep the form for corrections
+            return
 
-        # Compute means
-        def mean(vals): return round(sum(vals) / len(vals), 3)
-
-        scores = {
-            "satisfaction_mean": mean([sat1, sat2, sat3]),
-            "trust_mean":        mean([tr1, tr2, tr3]),
-            "relevance_mean":    mean([rel1, rel2, rel3]),
-            "ease_mean":         mean([ease1, ease2, ease3]),
-            "ad_perception_mean":mean([ad1, ad2, ad3]),
-            "intention_mean":    mean([inten1, inten2]),
-        }
-
-        demographics = {
-            "age": age_val,
-            "gender": gender,
-            "education": edu,
-            "online_freq": online_freq,
-            "ai_exp": ai_exp,
-            "noticed_ads": noticed_ads,
-        }
-
+        # assemble raw (item-level) answers
         answers = {
             "variant": st.session_state.get("variant"),
-            "demographics": demographics,
-            "scores": scores,
+            "group": "AI" if is_ai else "Search",
+            "with_ads": with_ads,
+            "trust": trust,                      # 5 items (1..7)
+            "privacy_concern": privacy,          # 4 items
+            "exploitation": exploitation,        # 2 items
+            "relationship_ios_choice": ios_choice,        # 1..7
+            "relationship_statements": relationship,      # 4 items
+            "familiarity_block": familiarity,    # 4 items (about the just-used system)
+            "manipulation_check": {
+                "tool_used": mc_tool,
+                "saw_sponsored": mc_ads
+            },
+            "other_checks": {
+                "fish_oil_familiarity": fish_fam,
+                "attitude_toward_system": attitude,
+                "experience_with_system": experience,
+                "frequency_of_use": frequency,
+                "system_familiarity_general": sys_familiar,
+                "commonness_of_ads": common_ads,
+                "habituation_to_ads": used_to_ads
+            },
+            "demographics": {
+                "age": age_val,
+                "sex": sex,
+                "education": edu,
+                "ethnicity": ethnicity
+            },
             "comments": comments,
         }
 
-        # Log & redirect
+        # log & redirect
         save_to_gsheet({
             "id":        st.session_state.prolific_id,
             "start":     st.session_state.start_time,
@@ -502,10 +840,13 @@ def render_final_survey_page():
         })
 
         target = get_completion_url()
-        st.success("Submitted. Please click the below button to redirect to the completion page…")
-        if (st.link_button("If you are not redirected automatically, click here to finish.", target)):
-            st.success("Session ended. Thank you!")
-            st.stop()
+        st.success("Submitted. Redirecting to the completion page…")
+        st_javascript(f'window.location.href = "{target}";')
+        try:
+            st.link_button("If not redirected, click here to complete", target)
+        except Exception:
+            st.markdown(f"[If not redirected, click here to complete]({target})")
+        st.stop()
 
 
 
@@ -523,6 +864,7 @@ def render_predefined_products(prod_list, heading, link_type="organic"):
             )
         if p.get("description"):
             st.markdown(p["description"])
+
 
 ############################################
 # 3) Predefined replies
@@ -668,7 +1010,6 @@ PRODUCT_CATALOG = {
         "page_description": "**About this item**\n- 250 mg TUDCA per capsule—research-backed bile acid for liver & cellular health.*\n- Convenient one-capsule daily serving; 60-count bottle is a two-month supply.\n- Non-GMO, soy- and gluten-free formula; ISO-accredited third-party tested.\n- Made in a GMP-compliant, FDA-registered U.S. facility."
     }
 }
-
 
 KEYWORD_RESPONSES = {
     "fish oil": [PRODUCT_CATALOG[k] for k in (
@@ -856,7 +1197,6 @@ PRODUCTS_DATA = {
 }
 
 
-
 ############################################
 # 5) Two-phase approach for links
 ############################################
@@ -874,20 +1214,22 @@ def open_pending_link():
         """
         st.markdown(js_code, unsafe_allow_html=True)
 
+
 def back_to_main():
     """Return from product page and log the click."""
     # 1) write click to Google Sheet
     save_to_gsheet({
-        "id":        st.session_state.prolific_id,
-        "start":     st.session_state.start_time,
+        "id": st.session_state.prolific_id,
+        "start": st.session_state.start_time,
         "timestamp": datetime.now().isoformat(),
-        "type":      "back",
-        "title":     "Back to main",
-        "url":       " ",                         # no external URL
+        "type": "back",
+        "title": "Back to main",
+        "url": " ",  # no external URL
     })
     time.sleep(0.5)
     # 2) navigate
     st.session_state.update({"page": "main", "current_product": {}})
+
 
 def render_product_page():
     """Single‑product landing page."""
@@ -922,7 +1264,7 @@ def render_product_page():
             with st.expander("About this item", expanded=True):
                 st.markdown(p["page_description"])
         # Optional specs (per‑product; see Section 4)
-        specs = p.get("specs") #or p.get("attributes") or {}
+        specs = p.get("specs")  # or p.get("attributes") or {}
         if specs:
             st.markdown("#### Product details")
             render_specs_table(specs)
@@ -1002,6 +1344,7 @@ def record_link_click_and_open(label, url, link_type):
             time.sleep(3)
             st.rerun()
 
+
 # def show_product_item(p: dict, link_type: str = "ad"):
 #     """
 #     Shows one product line with:
@@ -1056,12 +1399,12 @@ def show_product_item(p: dict, *, link_type="organic",
     label_text = f"Sponsored · {p['title']}" if link_type == "ad" else p["title"]
     if st.button(label_text, key=f"prod_{p['id']}"):
         save_to_gsheet({
-            "id":        st.session_state.prolific_id,
-            "start":     st.session_state.start_time,
+            "id": st.session_state.prolific_id,
+            "start": st.session_state.start_time,
             "timestamp": datetime.now().isoformat(),
-            "type":      link_type,                   # "ad", "organic", "deepseek"
-            "title":     p["title"],
-            "url":       p.get("product_url", " ")
+            "type": link_type,  # "ad", "organic", "deepseek"
+            "title": p["title"],
+            "url": p.get("product_url", " ")
         })
         st.session_state.update({"page": "product", "current_product": p})
         st.rerun()
@@ -1111,7 +1454,6 @@ def show_advertisements(relevant_products):
                         )
 
 
-
 ############################################
 # 7) Query -> relevant products
 ############################################
@@ -1141,7 +1483,7 @@ def show_deepseek_recommendation(with_ads: bool):
     with col1:
         st.title("Querya Rec")
     with col2:
-        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant','')}")
+        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
 
     if end_clicked:
         # Full-screen centered message (clears interface)
@@ -1218,8 +1560,6 @@ def show_deepseek_recommendation(with_ads: bool):
 
         st.session_state.history.append(("assistant", assistant_text))
 
-
-
         if with_ads:
             prods = get_products_by_query(user_first_input)
             st.session_state.current_ads = prods
@@ -1231,6 +1571,7 @@ def show_deepseek_recommendation(with_ads: bool):
     # If first message not yet
     def to_base64(path: str) -> str:
         return base64.b64encode(Path(path).read_bytes()).decode()
+
     if not st.session_state.first_message_submitted:
         # col1, col2, col3 = st.columns([1, 2, 1])
         # with col2:
@@ -1291,8 +1632,6 @@ def show_deepseek_recommendation(with_ads: bool):
 
     st.session_state.history.append(("assistant", assistant_text))
 
-
-
     if with_ads:
         prods = get_products_by_query(user_input)
         st.session_state.current_ads = prods
@@ -1308,7 +1647,7 @@ def show_google_search(with_ads: bool):
     with col1:
         st.title("Querya search")
     with col2:
-        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant','')}")
+        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
 
     if end_clicked:
         # Full-screen centered message (clears interface)
@@ -1521,7 +1860,7 @@ def show_google_search(with_ads: bool):
         st.write("**Search Results:**")
 
         for item in st.session_state.search_results:
-            show_product_item(item, link_type="organic",show_image=True,image_position="below")
+            show_product_item(item, link_type="organic", show_image=True, image_position="below")
 
             if item["desc"]:
                 st.write(item["desc"])
@@ -1539,7 +1878,6 @@ def show_google_search(with_ads: bool):
 # Main App Flow
 ############################################
 def main():
-
     if st.session_state.stage == "pid":
         st.title("Welcome!")
         pid = st.text_input("Please enter your Prolific ID:")
@@ -1548,12 +1886,20 @@ def main():
                 st.session_state.prolific_id = pid.strip()
                 # 记录
                 save_to_gsheet({
-                    "id":        st.session_state.prolific_id,
-                    "start":     st.session_state.start_time,
+                    "id": st.session_state.prolific_id,
+                    "start": st.session_state.start_time,
                     "timestamp": datetime.now().isoformat(),
-                    "type":      "pid_entered",
-                    "title":     "pid_ok",
-                    "url":       " "
+                    "type": "pid_entered",
+                    "title": "pid_ok",
+                    "url": " "
+                })
+                save_to_gsheet({
+                    "id": st.session_state.prolific_id,
+                    "start": st.session_state.start_time,
+                    "timestamp": datetime.now().isoformat(),
+                    "type": "variant_assigned",
+                    "title": f"variant={st.session_state.variant}",
+                    "url": " "
                 })
                 st.session_state.stage = "instructions"
                 st.rerun()
@@ -1585,7 +1931,6 @@ def main():
         show_google_search(with_ads=False)
     elif variant == 4:
         show_google_search(with_ads=True)
-
 
 
 if __name__ == "__main__":
