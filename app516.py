@@ -557,7 +557,7 @@ def render_final_survey_page():
                 left_anchor="Strongly disagree", right_anchor="Strongly agree") -> int | None:
         """Question text above, custom anchors above 1 & 7, then 1–7 horizontally (no default)."""
 
-        st.markdown(f"**{question} 1={left_anchor},7={right_anchor}**")
+        st.markdown(f"**{question} **(1={left_anchor}, 7={right_anchor})")
         # render_anchor_row(left_anchor, right_anchor)
         sel = st.radio("", options=[1,2,3,4,5,6,7], horizontal=True, index=None,
                        key=key, label_visibility="collapsed")
@@ -568,7 +568,7 @@ def render_final_survey_page():
                      keyprefix: str, left_anchor="Strongly disagree", right_anchor="Strongly agree"):
         """Show anchor row once for a set; return dict {key:score}."""
         st.markdown(f"### {title}")
-        st.markdown(f"**1={left_anchor},7={right_anchor}**")
+        st.markdown(f"1={left_anchor},7={right_anchor}")
         # render_anchor_row(left_anchor, right_anchor)
         results = {}
         for k, q in items:
