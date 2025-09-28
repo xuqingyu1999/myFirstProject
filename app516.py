@@ -659,9 +659,9 @@ def render_final_survey_page():
         # 5) Familiarity with the just-used system (4 items; disagree/agree anchors)
         fam_items = [
             ("fam1", f"The {SYS_NOUN}’s response felt unfamiliar to me."),
-            ("fam2", f"The interaction did not align with how I usually experience similar systems."),
+            # ("fam2", f"The interaction did not align with how I usually experience similar systems."),
             ("fam3", f"This experience did not feel typical of how platforms usually respond."),
-            ("fam4", f"Something about the interaction felt unfamiliar."),
+            # ("fam4", f"Something about the interaction felt unfamiliar."),
         ]
         familiarity = matrix_block("Familiarity with the just-used system", fam_items, keyprefix="familiarity")
 
