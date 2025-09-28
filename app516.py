@@ -23,7 +23,8 @@ from streamlit_javascript import st_javascript
 import json
 import webbrowser
 
-
+# if the user continue to interact, we remind them that they should continue to finish the study
+# put the ads above
 # ====== Completion link（可放到环境变量或 secrets）======
 def get_completion_url():
     try:
