@@ -25,6 +25,7 @@ import webbrowser
 
 # if the user continue to interact, we remind them that they should continue to finish the study
 # put the ads above
+# instructions must stay at least 30 seconds
 # ====== Completion link（可放到环境变量或 secrets）======
 def get_completion_url():
     try:
@@ -668,7 +669,7 @@ def render_final_survey_page():
 
         # ============= GENERAL / MANIPULATION CHECKS =============
 
-        st.markdown("### Manipulation Check")
+        # st.markdown("### Manipulation Check")
         mc_tool = st.radio(
             "What did you use to seek recommended products in this study?",
             ["An AI chatbot", "A search engine"], index=None, key="mc_tool"
@@ -726,7 +727,7 @@ def render_final_survey_page():
         st.markdown("---")
 
         # ============= DEMOGRAPHICS =============
-        st.markdown("### Demographics (all required)")
+        # st.markdown("### Demographics (all required)")
         age_str = st.text_input("Your age", value="", key="demo_age_text")
 
         sex = st.radio("Your sex", ["Male", "Female"], index=None, key="demo_sex")
