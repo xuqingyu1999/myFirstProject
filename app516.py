@@ -680,7 +680,7 @@ def render_final_survey_page():
 
         # ============= OTHER CHECKS (group-specific anchors where needed) =============
 
-        st.markdown("### Other Checks")
+        # st.markdown("### Other Checks")
 
         fish_fam = likert7(
             "How familiar are you with fish oil supplements?",
@@ -711,11 +711,11 @@ def render_final_survey_page():
         # )
 
         # commonness / habituation to sponsored content in this ecosystem
-        common_ads = likert7(
-            f"It is very common to see sponsored content in "
-            f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
-            key="chk_common_ads"
-        )
+        # common_ads = likert7(
+        #     f"It is very common to see sponsored content in "
+        #     f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
+        #     key="chk_common_ads"
+        # )
         used_to_ads = likert7(
             f"I am used to seeing sponsored content in "
             f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
