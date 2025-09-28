@@ -671,11 +671,11 @@ def render_final_survey_page():
 
         # st.markdown("### Manipulation Check")
         mc_tool = st.radio(
-            "What did you use to seek recommended products in this study?",
+            "**What did you use to seek recommended products in this study?**",
             ["An AI chatbot", "A search engine"], index=None, key="mc_tool"
         )
         mc_ads = st.radio(
-            "Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?",
+            "**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**",
             ["Yes", "No"], index=None, key="mc_ads"
         )
         st.markdown("---")
