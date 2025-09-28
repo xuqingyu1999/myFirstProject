@@ -636,7 +636,7 @@ def render_final_survey_page():
         exploitation = matrix_block("Sense of Exploitation", exploit_items, keyprefix="exploit")
 
         # 4) Relationship (IOS + 4 items)
-        st.markdown("### Relationship Closeness (IOS)")
+        # st.markdown("### Relationship Closeness (IOS)")
         st.markdown(
             f"In the pairs of circles below, one circle represents **you**, and the other represents **{SYS_NOUN_PLURAL}**. "
             "The amount of overlap indicates closeness. Please select the pair that best represents your feelings."
@@ -654,7 +654,7 @@ def render_final_survey_page():
             ("rel3", f"Overall, I have a relationship of mutual understanding with {SYS_NOUN_PLURAL}."),
             ("rel4", f"Overall, I feel emotionally close to {SYS_NOUN_PLURAL}."),
         ]
-        relationship = matrix_block("Relationship (statements)", rel_items, keyprefix="relationship")
+        # relationship = matrix_block("Relationship (statements)", rel_items, keyprefix="relationship")
 
         # 5) Familiarity with the just-used system (4 items; disagree/agree anchors)
         fam_items = [
