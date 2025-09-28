@@ -699,16 +699,16 @@ def render_final_survey_page():
             key="chk_experience",
             left_anchor="Very little", right_anchor="Very much"
         )
-        frequency = likert7(
-            f"How often do you use {SYS_NOUN_PLURAL}?",
-            key="chk_frequency",
-            left_anchor="Not often at all", right_anchor="Very often"
-        )
-        sys_familiar = likert7(
-            f"How familiar are you with {SYS_NOUN_PLURAL}?",
-            key="chk_sys_familiar",
-            left_anchor="Not familiar at all", right_anchor="Very familiar"
-        )
+        # frequency = likert7(
+        #     f"How often do you use {SYS_NOUN_PLURAL}?",
+        #     key="chk_frequency",
+        #     left_anchor="Not often at all", right_anchor="Very often"
+        # )
+        # sys_familiar = likert7(
+        #     f"How familiar are you with {SYS_NOUN_PLURAL}?",
+        #     key="chk_sys_familiar",
+        #     left_anchor="Not familiar at all", right_anchor="Very familiar"
+        # )
 
         # commonness / habituation to sponsored content in this ecosystem
         common_ads = likert7(
