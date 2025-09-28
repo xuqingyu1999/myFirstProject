@@ -719,7 +719,7 @@ def render_final_survey_page():
         #     key="chk_common_ads"
         # )
         att_check = likert7(
-            f"Please select 2",
+            f"Please select two",
             key="chk_att"
         )
         used_to_ads = likert7(
