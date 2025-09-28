@@ -567,7 +567,7 @@ def render_final_survey_page():
     def matrix_block(title: str, items: list[tuple[str, str]],
                      keyprefix: str, left_anchor="Strongly disagree", right_anchor="Strongly agree"):
         """Show anchor row once for a set; return dict {key:score}."""
-        st.markdown(f"### {title}")
+        # st.markdown(f"### {title}")
         st.markdown(f"1={left_anchor},7={right_anchor}")
         # render_anchor_row(left_anchor, right_anchor)
         results = {}
