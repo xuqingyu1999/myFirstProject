@@ -95,7 +95,7 @@ if "variant" not in st.session_state:
 ############################################
 st.set_page_config(page_title="🛒 Querya", layout="wide")
 
-API_KEY = os.getenv("DEEPSEEK_API_KEY") or "sk-ce6eb3e9045c4110862945af28f4794e"
+API_KEY = st.secrets.get("DEEPSEEK_API_KEY", None) or os.getenv("DEEPSEEK_API_KEY")
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com/v1")
 
 # Record the app's start time if not set
