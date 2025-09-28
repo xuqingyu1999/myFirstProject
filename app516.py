@@ -718,6 +718,10 @@ def render_final_survey_page():
         #     f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
         #     key="chk_common_ads"
         # )
+        att_check = likert7(
+            f"Please select 2",
+            key="chk_att"
+        )
         used_to_ads = likert7(
             f"I am used to seeing sponsored content in "
             f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
