@@ -47,7 +47,6 @@ def get_credentials_from_secrets():
     
     return creds_dict
 
-    return creds_dict
 
 
 # def save_to_gsheet(data: dict):
