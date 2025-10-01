@@ -23,6 +23,7 @@ from streamlit_javascript import st_javascript
 import json
 import webbrowser
 
+
 # if the user continue to interact, we remind them that they should continue to finish the study
 # put the ads above
 # instructions must stay at least 30 seconds
@@ -45,7 +46,9 @@ def get_credentials_from_secrets():
     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
     
+
     return creds_dict
+
 
 
 
@@ -96,7 +99,7 @@ if "variant" not in st.session_state:
 ############################################
 st.set_page_config(page_title="🛒 Querya", layout="wide")
 
-API_KEY = st.secrets.get("DEEPSEEK_API_KEY", None) or os.getenv("DEEPSEEK_API_KEY")
+API_KEY = os.getenv("DEEPSEEK_API_KEY") or "sk-ce6eb3e9045c4110862945af28f4794e" #st.secrets.get("DEEPSEEK_API_KEY", None) or os.getenv("DEEPSEEK_API_KEY")
 client = OpenAI(api_key=API_KEY, base_url="https://api.deepseek.com/v1")
 
 # Record the app's start time if not set
@@ -148,6 +151,28 @@ div.stButton > button:hover {
 """
 st.markdown(LINK_BUTTON_CSS, unsafe_allow_html=True)
 
+# --- pill-like chip buttons for suggested prompts ---
+SUGGESTION_CHIPS_CSS = """
+<style>
+div.stButton > button[title="chip"]{
+    background:#f6f8fa !important;
+    border:1px solid #d0d7de !important;
+    border-radius:9999px !important;
+    padding:6px 12px !important;
+    margin:4px 6px 0 0 !important;
+    font-size:14px !important;
+    color:#111 !important;
+    text-decoration:none !important;
+    cursor:pointer !important;
+}
+div.stButton > button[title="chip"]:hover{
+    background:#eef2f6 !important;
+}
+</style>
+"""
+st.markdown(SUGGESTION_CHIPS_CSS, unsafe_allow_html=True)
+
+
 SPEC_TABLE_CSS = """
 <style>
 .table-specs { width:100%; border-collapse:collapse; }
@@ -188,6 +213,7 @@ def get_variant_flags():
     with_ads = v in (2, 4)
     group_label = "AI Assistant" if is_ai else "Search Engine"
     return v, is_ai, with_ads, group_label
+
 
 def render_specs_table(specs: dict | None):
     if not specs:
@@ -243,6 +269,35 @@ def parse_markdown_links(source):
         segs.append({"type": "text", "content": text[last_end:]})
     return segs
 
+# Suggested prompts (you can edit/translate freely)
+SUGGESTED_QUERIES_AI = [
+    "Can you recommend some fish oil supplements?",
+    "Please recommend some fish oils.",
+    "Which fish oil is best for heart health?",
+    "Any high‑EPA/DHA fish oil recommendations?",
+    "Omega‑3 for brain function — what do you suggest?"
+]
+
+SUGGESTED_QUERIES_SEARCH = [
+    "best fish oil supplements",
+    "top omega‑3 fish oils",
+    "fish oil for heart health",
+    "high EPA DHA fish oil",
+    "fish oil for brain function"
+]
+
+def render_suggestion_chips(queries: list[str], prefix: str) -> str | None:
+    """Render chips in multiple columns; return the selected text or None."""
+    if not queries:
+        return None
+    ncols = min(1, max(1, len(queries)))
+    cols = st.columns(ncols)
+    chosen = None
+    for i, q in enumerate(queries):
+        with cols[i % ncols]:
+            if st.button(q, key=f"{prefix}_{i}", help="chip"):
+                chosen = q
+    return chosen
 
 def display_parsed_markdown(source, link_type="organic"):
     """
@@ -311,7 +366,7 @@ def render_instructions_page():
                 2. **Ask for product recommendations.** For example, you might type:  
                    - “Fish oil supplements”  
                    - “Fish oils”  
-                    
+
                    Or use any other terms you would naturally type into a search engine.
 
                 3. **Treat this task as if you were genuinely shopping for yourself.**  
@@ -328,192 +383,47 @@ def render_instructions_page():
     #     st.info("This condition **may include sponsored results** labeled “Sponsored”. Please browse naturally.")
     #
     # st.warning("Estimated time: about **2–3 minutes**. Please interact naturally as if you were shopping online.")
+        # 30-second hold (auto-advance, no clicks)
+    # ---- 30s 限制逻辑（不自动跳转；仅拦截 Next）----
+    HOLD_SECONDS = 30
+    if "instructions_start_ts" not in st.session_state:
+        st.session_state.instructions_start_ts = time.time()
 
-    if st.button("Start the task"):
-        # Optional: log variant explicitly once PID is known
-        save_to_gsheet({
-            "id":        st.session_state.get("prolific_id", "unknown"),
-            "start":     st.session_state.get("start_time", datetime.now().isoformat()),
-            "timestamp": datetime.now().isoformat(),
-            "type":      "enter_experiment",
-            "title":     f"{group_label} | ads={with_ads}",
-            "url":       " "
-        })
-        st.session_state.stage = "experiment"
-        st.rerun()
+    elapsed = int(time.time() - st.session_state.instructions_start_ts)
+    remaining = max(0, HOLD_SECONDS - elapsed)
 
+    # 友好提示剩余时间（无需自动刷新）
+    st.caption(f"Minimum reading time: {HOLD_SECONDS}s ") #· Time elapsed: {elapsed}s · Remaining: {remaining}s
 
+    # Next 按钮：30s 内点击 → 拦截并提示；30s 后点击 → 放行
+    next_clicked = st.button("Next")
+    if next_clicked:
+        if remaining > 0:
+            st.error(f"Please read the instructions for at least 30 seconds before proceeding. "
+                     f"{remaining}s remaining.")
+            # 记录过早点击
+            save_to_gsheet({
+                "id": st.session_state.get("prolific_id", "unknown"),
+                "start": st.session_state.get("start_time", datetime.now().isoformat()),
+                "timestamp": datetime.now().isoformat(),
+                "type": "instructions_next_too_early",
+                "title": f"{group_label} | ads={with_ads} | remaining={remaining}s",
+                "url": " "
+            })
+            return  # 留在说明页
+        else:
+            # 通过，进入实验并记录
+            save_to_gsheet({
+                "id": st.session_state.get("prolific_id", "unknown"),
+                "start": st.session_state.get("start_time", datetime.now().isoformat()),
+                "timestamp": datetime.now().isoformat(),
+                "type": "enter_experiment",
+                "title": f"{group_label} | ads={with_ads}",
+                "url": " "
+            })
+            st.session_state.stage = "experiment"
+            st.rerun()
 
-# def render_final_survey_page():
-#     st.title("Final Survey")
-#
-#     # Legend
-#     st.caption("Scale anchor: 1 = Strongly disagree … 7 = Strongly agree")
-#
-#     # 7-point horizontal Likert with question ABOVE
-#     def likert7(question: str, key: str) -> int | None:
-#         return st.radio(
-#             question,
-#             options=[1, 2, 3, 4, 5, 6, 7],
-#             index=None,  # <- no default
-#             horizontal=True,
-#             key=key
-#         )
-#
-#     def is_blank(x) -> bool:
-#         return x is None or (isinstance(x, str) and x.strip() == "")
-#
-#     with st.form("final_survey"):
-#         st.markdown(
-#             "Please complete all questions below. "
-#             "**All items are required.**"
-#         )
-#
-#         # ---------------- Demographics ----------------
-#         st.markdown("### Demographics")
-#         age_str = st.text_input("Age (18–99)", value="", key="demo_age_text")
-#         gender = st.radio("Gender", ["Male", "Female", "Other / Prefer not to say"],
-#                           index=None, key="demo_gender")
-#         edu = st.selectbox("Highest Education",
-#                            ["High school or below", "Bachelor", "Master", "Doctorate"],
-#                            index=None, placeholder="Select…", key="demo_edu")
-#         online_freq = st.selectbox("Online Shopping Frequency",
-#                                    ["Rarely", "Occasionally", "Several times a month", "Several times a week or more"],
-#                                    index=None, placeholder="Select…", key="demo_online_freq")
-#         ai_exp = st.selectbox("Familiarity with Generative AI / AI Assistants",
-#                               ["Not familiar", "Somewhat familiar", "Familiar", "Very familiar"],
-#                               index=None, placeholder="Select…", key="demo_ai_exp")
-#
-#         st.markdown("---")
-#
-#         # ---------------- Scales (7-point Likert; all required) ----------------
-#         st.markdown("### Scales (7-point Likert)")
-#
-#         # Satisfaction (3)
-#         st.markdown("**Satisfaction**")
-#         sat1 = likert7("I am satisfied with the overall experience of using this system.", "sat1")
-#         sat2 = likert7("The results met my expectations.", "sat2")
-#         sat3 = likert7("If I could choose again, I would still use this system.", "sat3")
-#
-#         # Trust (3)
-#         st.markdown("**Trust**")
-#         tr1 = likert7("I trust the results provided by this system.", "tr1")
-#         tr2 = likert7("I believe the system acts in the interest of the user.", "tr2")
-#         tr3 = likert7("I believe the system would not intentionally mislead me.", "tr3")
-#
-#         # Relevance (3)
-#         st.markdown("**Relevance**")
-#         rel1 = likert7("The returned products were highly relevant to my needs.", "rel1")
-#         rel2 = likert7("The results accurately reflected my query intention.", "rel2")
-#         rel3 = likert7("Irrelevant or noisy results were minimal.", "rel3")
-#
-#         # Ease of Use (3)
-#         st.markdown("**Ease of Use**")
-#         ease1 = likert7("The interface was easy to use overall.", "ease1")
-#         ease2 = likert7("Learning to operate this system was easy for me.", "ease2")
-#         ease3 = likert7("Completing the task required little effort.", "ease3")
-#
-#         # Ad perception (3) + noticed_ads
-#         st.markdown("**Ad Perception**")
-#         ad1 = likert7("I clearly recognized which items were sponsored content/ads.", "ad1")
-#         ad2 = likert7("Ads did not interfere with my browsing experience.", "ad2")
-#         ad3 = likert7("The ads shown were relevant to my needs.", "ad3")
-#         noticed_ads = st.radio("Did you notice sponsored content/ads during this task?",
-#                                ["Yes", "No", "Not sure"], index=None, key="noticed_ads")
-#
-#         # Intention (2)
-#         st.markdown("**Intention**")
-#         inten1 = likert7("I would like to use this system again in the future.", "inten1")
-#         inten2 = likert7("I would consider purchasing products shown in the results.", "inten2")
-#
-#         comments = st.text_area("Other comments or suggestions (optional)", key="open_comments")
-#
-#         submitted = st.form_submit_button("Submit & Redirect")
-#
-#     # ---------------- Validation & submit ----------------
-#     if submitted:
-#         # Validate age input
-#         age_val = None
-#         age_err = None
-#         if is_blank(age_str):
-#             age_err = "Please enter your age."
-#         else:
-#             try:
-#                 age_val = int(age_str.strip())
-#                 if age_val < 18 or age_val > 99:
-#                     age_err = "Age must be between 18 and 99."
-#             except Exception:
-#                 age_err = "Age must be a whole number."
-#
-#         # Required fields map
-#         required_map = {
-#             "Gender": gender,
-#             "Highest Education": edu,
-#             "Online Shopping Frequency": online_freq,
-#             "Familiarity with Generative AI": ai_exp,
-#             # Likert items
-#             "Satisfaction Q1": sat1, "Satisfaction Q2": sat2, "Satisfaction Q3": sat3,
-#             "Trust Q1": tr1, "Trust Q2": tr2, "Trust Q3": tr3,
-#             "Relevance Q1": rel1, "Relevance Q2": rel2, "Relevance Q3": rel3,
-#             "Ease of Use Q1": ease1, "Ease of Use Q2": ease2, "Ease of Use Q3": ease3,
-#             "Ad Perception Q1": ad1, "Ad Perception Q2": ad2, "Ad Perception Q3": ad3,
-#             "Noticed Ads": noticed_ads,
-#             "Intention Q1": inten1, "Intention Q2": inten2,
-#         }
-#         missing = [label for label, val in required_map.items() if is_blank(val)]
-#
-#         if age_err or missing:
-#             if age_err:
-#                 st.error(age_err)
-#             if missing:
-#                 st.error("Please complete all required questions: " + ", ".join(missing))
-#                 st.warning("Your responses have not been submitted. Please answer the missing items above.")
-#             return  # keep the form for corrections
-#
-#         # Compute means
-#         def mean(vals):
-#             return round(sum(vals) / len(vals), 3)
-#
-#         scores = {
-#             "satisfaction_mean": mean([sat1, sat2, sat3]),
-#             "trust_mean": mean([tr1, tr2, tr3]),
-#             "relevance_mean": mean([rel1, rel2, rel3]),
-#             "ease_mean": mean([ease1, ease2, ease3]),
-#             "ad_perception_mean": mean([ad1, ad2, ad3]),
-#             "intention_mean": mean([inten1, inten2]),
-#         }
-#
-#         demographics = {
-#             "age": age_val,
-#             "gender": gender,
-#             "education": edu,
-#             "online_freq": online_freq,
-#             "ai_exp": ai_exp,
-#             "noticed_ads": noticed_ads,
-#         }
-#
-#         answers = {
-#             "variant": st.session_state.get("variant"),
-#             "demographics": demographics,
-#             "scores": scores,
-#             "comments": comments,
-#         }
-#
-#         # Log & redirect
-#         save_to_gsheet({
-#             "id": st.session_state.prolific_id,
-#             "start": st.session_state.start_time,
-#             "timestamp": datetime.now().isoformat(),
-#             "type": "survey",
-#             "title": "final_survey",
-#             "url": json.dumps(answers, ensure_ascii=False)
-#         })
-#
-#         target = get_completion_url()
-#         st.success("Submitted. Please click the below button to redirect to the completion page…")
-#         if (st.link_button("If you are not redirected automatically, click here to finish.", target)):
-#             st.success("Session ended. Thank you!")
-#             st.stop()
 
 def render_final_survey_page():
     # ---- determine condition ----
@@ -525,7 +435,7 @@ def render_final_survey_page():
         return v, is_ai, with_ads, group_label
 
     v, is_ai, with_ads, group_label = get_variant_flags()
-    SYS_NOUN = "AI chatbot" if is_ai else "search engine"   # used in stems
+    SYS_NOUN = "AI chatbot" if is_ai else "search engine"  # used in stems
     SYS_NOUN_PLURAL = "AI chatbots" if is_ai else "search engines"
 
     st.title("Final Survey")
@@ -560,7 +470,7 @@ def render_final_survey_page():
 
         st.markdown(f"**{question}** (1={left_anchor}, 7={right_anchor})")
         # render_anchor_row(left_anchor, right_anchor)
-        sel = st.radio("", options=[1,2,3,4,5,6,7], horizontal=True, index=None,
+        sel = st.radio("", options=[1, 2, 3, 4, 5, 6, 7], horizontal=True, index=None,
                        key=key, label_visibility="collapsed")
         st.markdown("<div style='height:0.25rem;'></div>", unsafe_allow_html=True)
         return sel
@@ -575,7 +485,7 @@ def render_final_survey_page():
         for k, q in items:
             # keep each question visible above its row (Qualtrics-style matrix)
             st.markdown(f"**{q}**")
-            results[k] = st.radio("", options=[1,2,3,4,5,6,7],
+            results[k] = st.radio("", options=[1, 2, 3, 4, 5, 6, 7],
                                   horizontal=True, index=None,
                                   key=f"{keyprefix}_{k}", label_visibility="collapsed")
         st.markdown("---")
@@ -623,9 +533,12 @@ def render_final_survey_page():
         # 2) Privacy Concern (4 items)
         privacy_items = [
             ("priv1", f"I am concerned that this {SYS_NOUN} collects too much personal information about me."),
-            ("priv2", f"I worry that this {SYS_NOUN} may use my personal information for purposes I have not authorized."),
-            ("priv3", f"I feel uneasy that this {SYS_NOUN} may share my personal information with others without my authorization."),
-            ("priv4", f"I am concerned that my personal information may not be securely protected from unauthorized access when using this {SYS_NOUN}."),
+            ("priv2",
+             f"I worry that this {SYS_NOUN} may use my personal information for purposes I have not authorized."),
+            ("priv3",
+             f"I feel uneasy that this {SYS_NOUN} may share my personal information with others without my authorization."),
+            ("priv4",
+             f"I am concerned that my personal information may not be securely protected from unauthorized access when using this {SYS_NOUN}."),
         ]
         privacy = matrix_block("Privacy Concern", privacy_items, keyprefix="privacy")
 
@@ -645,7 +558,7 @@ def render_final_survey_page():
         ios_image()
         ios_choice = st.radio(
             "Please select the pair (1–7).",
-            options=[1,2,3,4,5,6,7], index=None, horizontal=True, key="ios_choice"
+            options=[1, 2, 3, 4, 5, 6, 7], index=None, horizontal=True, key="ios_choice"
         )
         st.markdown("---")
 
@@ -770,21 +683,21 @@ def render_final_survey_page():
         # collect required fields dynamically
         required = {
             # condition-specific blocks
-            **{f"trust_{k}": v for k,v in trust.items()},
-            **{f"privacy_{k}": v for k,v in privacy.items()},
-            **{f"exploit_{k}": v for k,v in exploitation.items()},
+            **{f"trust_{k}": v for k, v in trust.items()},
+            **{f"privacy_{k}": v for k, v in privacy.items()},
+            **{f"exploit_{k}": v for k, v in exploitation.items()},
             "ios_choice": ios_choice,
-            **{f"relationship_{k}": v for k,v in relationship.items()},
-            **{f"familiarity_{k}": v for k,v in familiarity.items()},
+            # **{f"relationship_{k}": v for k, v in relationship.items()},
+            **{f"familiarity_{k}": v for k, v in familiarity.items()},
             # general checks
             "mc_tool": mc_tool,
             "mc_ads": mc_ads,
             "fish_familiar": fish_fam,
             "attitude": attitude,
             "experience": experience,
-            "frequency": frequency,
-            "sys_familiar": sys_familiar,
-            "common_ads": common_ads,
+            # "frequency": frequency,
+            # "sys_familiar": sys_familiar,
+            # "common_ads": common_ads,
             "used_to_ads": used_to_ads,
             # demographics
             "sex": sex,
@@ -806,12 +719,12 @@ def render_final_survey_page():
             "variant": st.session_state.get("variant"),
             "group": "AI" if is_ai else "Search",
             "with_ads": with_ads,
-            "trust": trust,                      # 5 items (1..7)
-            "privacy_concern": privacy,          # 4 items
-            "exploitation": exploitation,        # 2 items
-            "relationship_ios_choice": ios_choice,        # 1..7
-            "relationship_statements": relationship,      # 4 items
-            "familiarity_block": familiarity,    # 4 items (about the just-used system)
+            "trust": trust,  # 5 items (1..7)
+            "privacy_concern": privacy,  # 4 items
+            "exploitation": exploitation,  # 2 items
+            "relationship_ios_choice": ios_choice,  # 1..7
+            # "relationship_statements": relationship,  # 4 items
+            "familiarity_block": familiarity,  # 4 items (about the just-used system)
             "manipulation_check": {
                 "tool_used": mc_tool,
                 "saw_sponsored": mc_ads
@@ -820,9 +733,9 @@ def render_final_survey_page():
                 "fish_oil_familiarity": fish_fam,
                 "attitude_toward_system": attitude,
                 "experience_with_system": experience,
-                "frequency_of_use": frequency,
-                "system_familiarity_general": sys_familiar,
-                "commonness_of_ads": common_ads,
+                # "frequency_of_use": frequency,
+                # "system_familiarity_general": sys_familiar,
+                # "commonness_of_ads": common_ads,
                 "habituation_to_ads": used_to_ads
             },
             "demographics": {
@@ -836,23 +749,24 @@ def render_final_survey_page():
 
         # log & redirect
         save_to_gsheet({
-            "id":        st.session_state.prolific_id,
-            "start":     st.session_state.start_time,
+            "id": st.session_state.prolific_id,
+            "start": st.session_state.start_time,
             "timestamp": datetime.now().isoformat(),
-            "type":      "survey",
-            "title":     "final_survey",
-            "url":       json.dumps(answers, ensure_ascii=False)
+            "type": "survey",
+            "title": "final_survey",
+            "url": json.dumps(answers, ensure_ascii=False)
         })
 
         target = get_completion_url()
         st.success("Submitted. Redirecting to the completion page…")
-        st_javascript(f'window.location.href = "{target}";')
-        try:
-            st.link_button("If not redirected, click here to complete", target)
-        except Exception:
-            st.markdown(f"[If not redirected, click here to complete]({target})")
-        st.stop()
+        # st_javascript(f'window.location.href = "{target}";')
+        st.markdown(f'<meta http-equiv="refresh" content="0; url={target}">', unsafe_allow_html=True)
+        st.link_button("If not redirected, click here to complete", target)
+        #     time.sleep(10)
+        # except Exception:
+        #     st.markdown(f"[If not redirected, click here to complete]({target})")
 
+        st.stop()
 
 
 def render_predefined_products(prod_list, heading, link_type="organic"):
@@ -1483,49 +1397,198 @@ def get_products_by_query(query: str):
 ############################################
 # 8) DeepSeek Recommendation Flow
 ############################################
+# def show_deepseek_recommendation(with_ads: bool):
+#     col1, col2 = st.columns([6, 1])
+#     with col1:
+#         st.title("Querya Rec")
+#     with col2:
+#         end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
+#
+#     if end_clicked:
+#         # Full-screen centered message (clears interface)
+#         # st.session_state["end_clicked"] = True
+#         click_data = {
+#             "id": st.session_state.get("prolific_id", "unknown"),
+#             "start": st.session_state.get("start_time", datetime.now().isoformat()),
+#             "timestamp": datetime.now().isoformat(),
+#             "type": "end",
+#             "title": "Finish / End Session",
+#             "url": " "
+#         }
+#         save_to_gsheet(click_data)
+#         st.session_state.stage = "survey"
+#         st.rerun()  # Re-run to show the message cleanly in next render
+#
+#     # After rerun
+#     if st.session_state.get("end_clicked", False):
+#         st.markdown("<br><br><br>", unsafe_allow_html=True)
+#         st.markdown(
+#             "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
+#             unsafe_allow_html=True
+#         )
+#         st.stop()
+#
+#     if "history" not in st.session_state:
+#         st.session_state.history = [
+#             ("system", "You are an e-commerce chat assistant who recommends products based on user needs.")
+#         ]
+#     if "first_message_submitted" not in st.session_state:
+#         st.session_state.first_message_submitted = False
+#     if "pending_first_message" not in st.session_state:
+#         st.session_state.pending_first_message = None
+#     if "current_ads" not in st.session_state:
+#         st.session_state.current_ads = []
+#
+#     # Display conversation so far
+#     for role, content in st.session_state.history:
+#         if role == "system":
+#             continue
+#         if role == "assistant":
+#             with st.chat_message("assistant"):
+#                 display_parsed_markdown(content, link_type="deepseek")
+#         else:
+#             st.chat_message(role).write(content)
+#
+#     # If we have a pending first message
+#     if st.session_state.first_message_submitted and st.session_state.pending_first_message:
+#         user_first_input = st.session_state.pending_first_message
+#         st.session_state.pending_first_message = None
+#
+#         if with_ads:
+#             prods = get_products_by_query(user_first_input)
+#             st.session_state.current_ads = prods
+#
+#             # Show current ads
+#             if st.session_state.current_ads:
+#                 show_advertisements(st.session_state.current_ads)
+#
+#         predefined = get_predefined_response(user_first_input)
+#         if predefined:
+#             assistant_text = predefined
+#             if isinstance(predefined, list):  # fish‑oil / liver list
+#                 # detect which keyword we hit (fish oil vs liver)
+#                 kw = "fish oil" if "fish" in user_first_input.lower() else "liver"
+#                 heading = PREDEFINED_HEADINGS[kw]
+#                 with st.chat_message("assistant"):
+#                     render_predefined_products(predefined, heading, link_type="organic")
+#             else:  # a plain string reply
+#                 with st.chat_message("assistant"):
+#                     display_parsed_markdown(predefined, link_type="organic")
+#         else:
+#             resp = client.chat.completions.create(
+#                 model="deepseek-chat",
+#                 messages=[{"role": r, "content": c} for r, c in st.session_state.history],
+#                 temperature=1,
+#                 stream=False,
+#             )
+#             assistant_text = resp.choices[0].message.content
+#             with st.chat_message("assistant"):
+#                 display_parsed_markdown(assistant_text, link_type="deepseek")
+#
+#         st.session_state.history.append(("assistant", assistant_text))
+#
+#
+#
+#
+#
+#     # If first message not yet
+#     def to_base64(path: str) -> str:
+#         return base64.b64encode(Path(path).read_bytes()).decode()
+#
+#     if not st.session_state.first_message_submitted:
+#         # col1, col2, col3 = st.columns([1, 2, 1])
+#         # with col2:
+#         try:
+#             logo_b64 = to_base64("querya.png")
+#             st.markdown(
+#                 f"""
+#                 <div style="text-align:center; margin-top:20px;">
+#                     <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
+#                 </div>
+#                 """,
+#                 unsafe_allow_html=True
+#             )
+#         except:
+#             st.write("Querya Rec")
+#
+#         # query = st.text_input("", placeholder="Input Key Words for Search Here")
+#         user_first_input = st.text_input("", placeholder="Please enter your message:")
+#
+#         if user_first_input:
+#             st.session_state.history.append(("user", user_first_input))
+#             st.chat_message("user").write(user_first_input)
+#             st.session_state.first_message_submitted = True
+#             st.session_state.pending_first_message = user_first_input
+#             st.rerun()
+#         return
+#
+#     # Subsequent messages
+#     user_input = st.chat_input("Input message and press enter…")
+#     if not user_input:
+#         return
+#
+#     st.session_state.history.append(("user", user_input))
+#     st.chat_message("user").write(user_input)
+#     if with_ads:
+#         prods = get_products_by_query(user_input)
+#         st.session_state.current_ads = prods
+#         if prods:
+#             show_advertisements(prods)
+#
+#     predefined = get_predefined_response(user_input)
+#     if predefined:
+#         assistant_text = predefined
+#         if isinstance(predefined, list):  # fish‑oil / liver list
+#             # detect which keyword we hit (fish oil vs liver)
+#             kw = "fish oil" if "fish" in user_input.lower() else "liver"
+#             heading = PREDEFINED_HEADINGS[kw]
+#             with st.chat_message("assistant"):
+#                 render_predefined_products(predefined, heading, link_type="organic")
+#         else:  # a plain string reply
+#             with st.chat_message("assistant"):
+#                 display_parsed_markdown(predefined, link_type="organic")
+#     else:
+#         resp = client.chat.completions.create(
+#             model="deepseek-chat",
+#             messages=[{"role": r, "content": c} for r, c in st.session_state.history],
+#             temperature=1,
+#             stream=False,
+#         )
+#         assistant_text = resp.choices[0].message.content
+#         with st.chat_message("assistant"):
+#             display_parsed_markdown(assistant_text, link_type="deepseek")
+#
+#     st.session_state.history.append(("assistant", assistant_text))
+
 def show_deepseek_recommendation(with_ads: bool):
+    """AI-chat condition: one-shot query with ads-first rendering and suggested prompts."""
+    # -------- Header --------
     col1, col2 = st.columns([6, 1])
     with col1:
         st.title("Querya Rec")
     with col2:
-        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
-
+        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant','')}")
     if end_clicked:
-        # Full-screen centered message (clears interface)
-        # st.session_state["end_clicked"] = True
-        click_data = {
-            "id": st.session_state.get("prolific_id", "unknown"),
-            "start": st.session_state.get("start_time", datetime.now().isoformat()),
+        save_to_gsheet({
+            "id":        st.session_state.get("prolific_id", "unknown"),
+            "start":     st.session_state.get("start_time", datetime.now().isoformat()),
             "timestamp": datetime.now().isoformat(),
-            "type": "end",
-            "title": "Finish / End Session",
-            "url": " "
-        }
-        save_to_gsheet(click_data)
+            "type":      "end",
+            "title":     "Finish / End Session",
+            "url":       " "
+        })
         st.session_state.stage = "survey"
-        st.rerun()  # Re-run to show the message cleanly in next render
+        st.rerun()
 
-    # After rerun
-    if st.session_state.get("end_clicked", False):
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.markdown(
-            "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
-            unsafe_allow_html=True
-        )
-        st.stop()
+    # -------- State scaffolding --------
+    st.session_state.setdefault("history", [
+        ("system", "You are an e-commerce chat assistant who recommends products based on user needs.")
+    ])
+    st.session_state.setdefault("first_message_submitted", False)
+    st.session_state.setdefault("pending_first_message", None)
+    st.session_state.setdefault("current_ads", [])
 
-    if "history" not in st.session_state:
-        st.session_state.history = [
-            ("system", "You are an e-commerce chat assistant who recommends products based on user needs.")
-        ]
-    if "first_message_submitted" not in st.session_state:
-        st.session_state.first_message_submitted = False
-    if "pending_first_message" not in st.session_state:
-        st.session_state.pending_first_message = None
-    if "current_ads" not in st.session_state:
-        st.session_state.current_ads = []
-
-    # Display conversation so far
+    # -------- Render past turns --------
     for role, content in st.session_state.history:
         if role == "system":
             continue
@@ -1535,25 +1598,43 @@ def show_deepseek_recommendation(with_ads: bool):
         else:
             st.chat_message(role).write(content)
 
-    # If we have a pending first message
+    # -------- If we have a pending first message, process it once --------
     if st.session_state.first_message_submitted and st.session_state.pending_first_message:
         user_first_input = st.session_state.pending_first_message
         st.session_state.pending_first_message = None
 
+        # Log first query
+        save_to_gsheet({
+            "id":        st.session_state.prolific_id,
+            "start":     st.session_state.start_time,
+            "timestamp": datetime.now().isoformat(),
+            "type":      "first_query",
+            "title":     user_first_input,
+            "url":       " "
+        })
+
+        # 1) ADS FIRST (if any)
+        if with_ads:
+            prods = get_products_by_query(user_first_input)
+            st.session_state.current_ads = prods
+            if prods:
+                show_advertisements(prods)
+
+        # 2) Then organic response
         predefined = get_predefined_response(user_first_input)
         if predefined:
             assistant_text = predefined
-            if isinstance(predefined, list):  # fish‑oil / liver list
-                # detect which keyword we hit (fish oil vs liver)
+            if isinstance(predefined, list):
+                # choose heading based on detected keyword
                 kw = "fish oil" if "fish" in user_first_input.lower() else "liver"
-                heading = PREDEFINED_HEADINGS[kw]
+                heading = PREDEFINED_HEADINGS.get(kw, "Recommended items")
                 with st.chat_message("assistant"):
                     render_predefined_products(predefined, heading, link_type="organic")
-            else:  # a plain string reply
+            else:
                 with st.chat_message("assistant"):
                     display_parsed_markdown(predefined, link_type="organic")
         else:
-            resp = client.chat.completions.create(
+            resp = client.chat_completions.create(  # if your client is OpenAI, keep .chat.completions.create
                 model="deepseek-chat",
                 messages=[{"role": r, "content": c} for r, c in st.session_state.history],
                 temperature=1,
@@ -1565,36 +1646,37 @@ def show_deepseek_recommendation(with_ads: bool):
 
         st.session_state.history.append(("assistant", assistant_text))
 
-        if with_ads:
-            prods = get_products_by_query(user_first_input)
-            st.session_state.current_ads = prods
-
-    # Show current ads
-    if st.session_state.current_ads:
-        show_advertisements(st.session_state.current_ads)
-
-    # If first message not yet
-    def to_base64(path: str) -> str:
-        return base64.b64encode(Path(path).read_bytes()).decode()
-
+    # -------- First message UI (shows only before first submission) --------
     if not st.session_state.first_message_submitted:
-        # col1, col2, col3 = st.columns([1, 2, 1])
-        # with col2:
+        # optional logo
         try:
-            logo_b64 = to_base64("querya.png")
-            st.markdown(
-                f"""
-                <div style="text-align:center; margin-top:20px;">
-                    <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        except:
-            st.write("Querya Rec")
+            b64 = base64.b64encode(Path("querya.png").read_bytes()).decode()
+            st.markdown(f"<div style='text-align:center; margin-top:12px;'>"
+                        f"<img src='data:image/png;base64,{b64}' style='height:80px;' /></div>",
+                        unsafe_allow_html=True)
+        except Exception:
+            pass
 
-        # query = st.text_input("", placeholder="Input Key Words for Search Here")
-        user_first_input = st.text_input("", placeholder="Please enter your message:")
+        # input + suggested prompts
+        st.markdown("**Please enter ONE query to start:**")
+        user_first_input = st.text_input("", placeholder="e.g., Can you recommend some fish oil supplements?")
+
+        SUGGESTED_QUERIES_AI = [
+            "Can you recommend some fish oil supplements?",
+            "Please recommend some fish oils.",
+            "Which fish oil are good?",
+            "Any fish oil recommendations?",
+            "Fish oil for brain function — what do you suggest?"
+        ]
+        # st.caption("Or pick a suggested prompt:")
+        # cols = st.columns(3)
+        # chosen = None
+        # for i, q in enumerate(SUGGESTED_QUERIES_AI):
+        #     if cols[i % 3].button(q, key=f"sug_ai_{i}"):
+        #         chosen = q
+        chosen = render_suggestion_chips(SUGGESTED_QUERIES_AI, "sug_search")
+        if chosen:
+            user_first_input = chosen
 
         if user_first_input:
             st.session_state.history.append(("user", user_first_input))
@@ -1604,279 +1686,422 @@ def show_deepseek_recommendation(with_ads: bool):
             st.rerun()
         return
 
-    # Subsequent messages
-    user_input = st.chat_input("Input message and press enter…")
+    # -------- Block/redirect further chat after the first query --------
+    user_input = st.chat_input("Only one query is needed for this study. Click 'Finish / End Session' when ready.")
     if not user_input:
         return
 
-    st.session_state.history.append(("user", user_input))
+    # Log the attempt and gently remind (no new assistant output)
     st.chat_message("user").write(user_input)
+    save_to_gsheet({
+        "id":        st.session_state.prolific_id,
+        "start":     st.session_state.start_time,
+        "timestamp": datetime.now().isoformat(),
+        "type":      "extra_query_attempt",
+        "title":     user_input[:200],
+        "url":       " "
+    })
+    with st.chat_message("assistant"):
+        st.info("Thanks! For this study, you only need to enter **one** query. "
+                "Please click **Finish / End Session** (top right) to proceed to the survey.")
 
-    predefined = get_predefined_response(user_input)
-    if predefined:
-        assistant_text = predefined
-        if isinstance(predefined, list):  # fish‑oil / liver list
-            # detect which keyword we hit (fish oil vs liver)
-            kw = "fish oil" if "fish" in user_input.lower() else "liver"
-            heading = PREDEFINED_HEADINGS[kw]
-            with st.chat_message("assistant"):
-                render_predefined_products(predefined, heading, link_type="organic")
-        else:  # a plain string reply
-            with st.chat_message("assistant"):
-                display_parsed_markdown(predefined, link_type="organic")
-    else:
-        resp = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[{"role": r, "content": c} for r, c in st.session_state.history],
-            temperature=1,
-            stream=False,
-        )
-        assistant_text = resp.choices[0].message.content
-        with st.chat_message("assistant"):
-            display_parsed_markdown(assistant_text, link_type="deepseek")
-
-    st.session_state.history.append(("assistant", assistant_text))
-
-    if with_ads:
-        prods = get_products_by_query(user_input)
-        st.session_state.current_ads = prods
-        if prods:
-            show_advertisements(prods)
 
 
 ############################################
 # 9) Google-like Search Flow
 ############################################
+def do_fake_google_search(query):
+    lower_q = query.lower()
+
+    # 这里仅做示例返回几条伪搜索结果，可根据关键词控制输出
+
+    if ("鱼油" in lower_q) or ("fish" in lower_q):
+        return [
+            {
+                "id": "fish_01",
+                "title": "Nordic Naturals Ultimate Omega  ",
+                "product_url": "https://www.amazon.com/Nordic-Naturals-Ultimate-Support-Healthy/dp/B002CQU564/ref=sr_1_1?content-id=amzn1.sym.c9738cef-0b5a-4096-ab1b-6af7c45832cd%3Aamzn1.sym.c9738cef-0b5a-4096-ab1b-6af7c45832cd&dib=eyJ2IjoiMSJ9.EmMg0Sjrk3Up1-B8Uq6XmXPfqBR6LsN4xh_xk9FkohcxjUGjjtl8VDmFPAv02s7DdvP4IMVJlYCiu4xLS3tkFzqAjY8zzLpTcrQiGDBHfSlCICd1rxDQrjuX09VNQDqQLzn3cHDWmdL3cWFyPa6GoFGZn3Y4_gA0M70XM89DcYOwpBeQlrC5yad9lab17AwZgciNRLxb8byU-LfuW17zz3q-IozuDG-egQAIeXgugVoJ8WRIvJz3NkILl22JMYtajLueBHt6DzsSWXw0pyyU1wzGr_pw1-I-LzakONQMKjk.5XQSZpgWB9fgxSBUCDKvd3csceCcXwJ8hgXGTLOIUrg&dib_tag=se&keywords=Nordic%2BNaturals%2BUltimate%2BOmega%2BCognition&pd_rd_r=dbeef994-8b31-4a6a-965d-1774b9bbb5c4&pd_rd_w=oTInk&pd_rd_wg=3hsHS&qid=1747570281&sr=8-1&th=1",
+                "site": "www.iherb.com",
+                "price": "$41.33",
+                "specs": {
+                    "Brand": "Nordic Naturals",
+                    "Flavor": "Lemon",
+                    "Primary supplement type": "Omega-3",
+                    "Unit Count": "180 Count",
+                    "Item Form": "Softgel",
+                    "Item Weight": "0.69 lb"
+                },
+                "image_url": "https://m.media-amazon.com/images/I/61x5u8LMFWL._AC_SL1000_.jpg",
+                "desc": "High-concentration EPA/DHA (650 mg Omega-3 per soft-gel); IFOS 5-star certified; triglyceride (TG) form for superior absorption. Ideal for cardiovascular health, anti-inflammatory needs, or anyone seeking a highly purified fish oil.",
+                "page_description": "**About this item**\n- WHY OMEGA-3s – EPA & DHA support heart, brain, eye and immune health, and help maintain a healthy mood.\n- DOCTOR-RECOMMENDED dose meets American Heart Association guidelines for cardiovascular support.\n- BETTER ABSORPTION & TASTE – Triglyceride form with pleasant lemon flavor and zero fishy burps.\n- PURITY GUARANTEED – Wild-caught fish, non-GMO, gluten- & dairy-free with no artificial additives."
+            },
+            {
+                "id": "fish_02",
+                "title": "WHC UnoCardio 1000 ",
+                "product_url": "https://www.amazon.com/stores/page/29B9D3D0-5A5E-4EEA-A0A2-D812CA2F8559/?_encoding=UTF8&store_ref=SB_A076637421Z7I7ERZ0TXQ-A03352931L0DK4Z7CLDKO&pd_rd_plhdr=t&aaxitk=49fae88956cfec31cfd29cac8b8abde1&hsa_cr_id=0&lp_asins=B00QFTGSK6%2CB01MQJZI9D%2CB07NLCBPGN&lp_query=WHC%20UnoCardio%201000&lp_slot=desktop-hsa-3psl&ref_=sbx_be_s_3psl_mbd_mb0_logo&pd_rd_w=kHhnR&content-id=amzn1.sym.5594c86b-e694-4e3e-9301-a074f0faf98a%3Aamzn1.sym.5594c86b-e694-4e3e-9301-a074f0faf98a&pf_rd_p=5594c86b-e694-4e3e-9301-a074f0faf98a&pf_rd_r=J95ESAZ01FFJGKDH15S5&pd_rd_wg=udhtB&pd_rd_r=1ca75ded-9d8a-4db4-9e02-4051fdc574f2",
+                "site": "www.whc.clinic",
+                "price": "$40.45",
+                "specs": {
+                    "Brand": "WHC",
+                    "Flavor": "Natrual Orange",
+                    "Primary supplement type": "Omega-3",
+                    "Unit Count": "180 Count",
+                    "Item Form": "Softgel",
+                    "Item Weight": "16.8 ounces"
+                },
+                "image_url": "https://m.media-amazon.com/images/I/71htaA+bT9L._AC_SL1500_.jpg",
+                "desc": "Ranked No. 1 globally by IFOS; Contains 1,000 mg Omega-3 (EPA + DHA) per soft-gel; enriched with vitamin D3; individually blister-packed to prevent oxidation. Ideal for middle-aged and older adults who demand top purity and a premium formulation.",
+                "page_description": "**About this item**\n- 1 180 mg total Omega-3 (EPA 665 mg / DHA 445 mg) per soft-gel for heart, brain and vision.\n- Provides 1 000 IU vitamin D3 to support bones, muscles and immunity.\n- r-Triglyceride form for superior absorption; lactose- & gluten-free, burp-free orange flavor.\n- Ultra-pure, Friend-of-the-Sea-certified fish oil in beef-gelatin-free blister packs."
+            },
+            {
+                "id": "fish_03",
+                "title": "Now Foods Ultra Omega-3",
+                "product_url": "https://www.amazon.com/NOW-Supplements-Molecularly-Distilled-Softgels/dp/B0BGQR8KSG/ref=sr_1_1?crid=1WK5FQS4N6VT9&dib=eyJ2IjoiMSJ9.sczFj7G5tzaluW3utIDJFvN3vRVXIKN8OW6iAI1rL8RiGXrbNcV75KmT0QHEw_-mrjN9Y2Z_QXZcyi9A3KwDB5TpToVICSiFPa7RnnItgqpDWW7DzU2ECbX73MLiBO0nOBcQe4If9EV_QeFtgmERZF360mEcTJ3ZfaxrOKNzI8A.dUyPZz9HZwZJIqkDLMtL5snAfj0y8Ayu3PNq8Ugt-WU&dib_tag=se&keywords=Now%2BFoods%2BUltra%2BOmega-3&qid=1747669011&sprefix=now%2Bfoods%2Bultra%2Bomega-3%2Caps%2C677&sr=8-1&th=1",
+                "site": "www.iherb.com",
+                "price": "$41.51",
+                "specs": {
+                    "Brand": "Now Foods",
+                    "Flavor": "Unflavoured",
+                    "Primary supplement type": "Omega-3",
+                    "Unit Count": "180 Count",
+                    "Item Form": "Softgel",
+                    "Item Weight": "375 g"
+                },
+                "image_url": "https://m.media-amazon.com/images/I/71auVVCYKnL._AC_SX679_.jpg",
+                "desc": "Great value (EPA 500 mg + DHA 250 mg per soft-gel); IFOS certified; suitable for long-term, everyday supplementation. This is ideal for general health maintenance, budget-conscious consumers, and daily nutritional support.",
+                "page_description": "**About this item**\n- CARDIOVASCULAR SUPPORT – 600 mg EPA & 300 mg DHA per enteric-coated soft-gel.\n- MOLECULARLY DISTILLED for purity; tested free of PCBs, dioxins & heavy metals.\n- ENTERIC COATING reduces nausea and fishy aftertaste.\n- NON-GMO, Kosher and GMP-quality assured by the family-owned NOW® brand since 1968."
+            },
+            {
+                "id": "fish_04",
+                "title": "Blackmores OMEGA BRAIN Caps 60s",
+                "product_url": "https://www.amazon.com.au/Blackmores-Omega-Triple-Concentrated-Capsules/dp/B0773JF7JX?th=1",
+                "site": "vivanaturals.com",
+                "price": "$40.9",
+                "specs": {
+                    "Brand": "Blackmores",
+                    "Flavor": "Lutein",
+                    "Primary supplement type": "Omega-3",
+                    "Unit Count": "180 Count",
+                    "Item Form": "Tablet",
+                    "Item Weight": "0.39 Kilograms"
+                },
+                "image_url": "https://m.media-amazon.com/images/I/71UhUKoWbnL._AC_SL1500_.jpg",
+                "desc": "Best-selling Australian pharmacy product; 900 mg Omega-3 per soft-gel; supports cardiovascular health. This is ideal for intensive cardiovascular support, joint health, and individuals seeking a high-dose omega-3 supplement.",
+                "page_description": "**About this item**\n- One-a-day capsule delivers 500 mg DHA to maintain brain health and mental performance.\n- Provides four-times more DHA than standard fish oil—ideal if you eat little fish.\n- 100 % wild-caught small-fish oil rigorously tested for mercury, dioxins & PCBs.\n- Supports healthy growth in children and overall wellbeing for all ages."
+            },
+            {
+                "id": "fish_05",
+                "title": "Möller’s Norwegian Cod-Liver Oil",
+                "product_url": "https://www.amazon.com.be/-/en/Mollers-Omega-Norwegian-Cod-Liver-Pruners/dp/B074XB9RNH?language=en_GB",
+                "site": "www.mollers.no",
+                "price": "$40.63",
+                "specs": {
+                    "Brand": "Möller’s",
+                    "Flavor": "Lofoten",
+                    "Primary supplement type": "Fish Oil",
+                    "Unit Count": "8.4 Fluid Ounces",
+                    "Item Form": "Liquid",
+                    "Item Weight": "1.1 Pounds"
+                },
+                "image_url": "https://m.media-amazon.com/images/I/61eg-Vgm97L._AC_SL1500_.jpg",
+                "desc": "Liquid fish oil enriched with natural vitamins A and D; trusted Nordic brand with over 100 years of history; suitable for children and pregnant women. This is ideal for family supplementation, children’s health, pregnancy nutritional support, and enhancing immune function.",
+                "page_description": "**About this item**\n- Natural source of EPA & DHA to support heart, brain and vision.\n- Supplies vitamins A & D for immune function and normal bone growth.\n- Sustainably sourced Arctic cod and bottled under Norway’s century-old Möller’s quality standards.\n- Refreshing lemon flavor with no fishy aftertaste; kid- and pregnancy-friendly."
+            },
+        ]
+    # 如果搜索里包含'liver'
+    elif ("liver" in lower_q):
+        return [
+            {
+                "id": "liver_01",
+                "title": "Thorne Liver Cleanse",
+                "product_url": "https://www.amazon.com/Thorne-Research-Cleanse-Detoxification-Capsules/dp/B07978NYC5",
+                "site": "https://www.amazon.com/Thorne-Research-Cleanse-Detoxification-Capsules/dp/B07978NYC5",
+                "image_url": "https://m.media-amazon.com/images/I/71eMoaqvJyL._AC_SL1500_.jpg",
+                "desc": "Professional-grade formula that combines milk thistle (125 mg silymarin), burdock, chicory, berberine, and other botanicals; NSF-Certified for Sport®; produced in a GMP-compliant U.S. facility. This is ideal for individuals looking for a broad-spectrum botanical detox blend—especially those who value third-party testing and athlete-friendly certifications.",
+                "page_description": "**About this item**\n- Synergistic botanical blend enhances detoxification and bile flow.*\n- Supports both Phase I and Phase II liver detox pathways.*\n- Also provides kidney-supportive herbs for comprehensive clearance.*\n- NSF Certified for Sport® and third-party tested for contaminants."
+            },
+            {
+                "id": "liver_02",
+                "title": "Himalaya LiverCare (Liv 52 DS)",
+                "product_url": "https://www.amazon.com.be/-/en/Himalaya-Liv-52-DS-3-Pack/dp/B09MF88N71",
+                "site": "www.whc.clinic",
+                "image_url": "https://m.media-amazon.com/images/I/61VEN7Bl8wL._AC_SL1500_.jpg",
+                "desc": "Clinically studied Ayurvedic blend (capers, chicory, black nightshade, arjuna, yarrow, etc.) shown to improve Child-Pugh scores and reduce ALT/AST in liver-compromised patients. This is ideal for those seeking a time-tested herbal formula with human-trial evidence, including individuals with mild enzyme elevations or high environmental/toxic exposure.",
+                "page_description": "**About this item**\n- Herbal liver-cleanse formula that helps detoxify and protect liver cells.*\n- Boosts metabolic capacity and promotes healthy bile production for digestion.*\n- Vegan caplets free of gluten, dairy, soy, corn, nuts and animal gelatin; non-GMO.\n- Trusted Ayurvedic brand since 1930 with decades of clinical research."
+            },
+            {
+                "id": "liver_03",
+                "title": "Jarrow Formulas Milk Thistle (150 mg)",
+                "product_url": "https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1",
+                "site": "https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1",
+                "image_url": "https://m.media-amazon.com/images/I/71G03a0TYUL._AC_SL1500_.jpg",
+                "desc": "It contains 30:1 standardized silymarin phytosome bonded to phosphatidylcholine for up-to-30× higher bioavailability than conventional milk thistle; vegetarian capsules; gluten-, soy-, and dairy-free. This is ideal for people who need a concentrated, highly absorbable milk-thistle extract—e.g., those on multiple medications or with occasional alcohol use.",
+                "page_description": "**About this item**\n- 150 mg 30:1 milk-thistle extract standardized to 80 % silymarin flavonoids.\n- Helps raise glutathione levels for healthy liver detoxification.*\n- Provides antioxidant protection against free-radical damage.*\n- Easy-to-swallow veggie capsules; adults take 1–3 daily as directed."
+            },
+            {
+                "id": "liver_04",
+                "title": "NOW Foods Liver Refresh™",
+                "product_url": "https://www.amazon.com/Liver-Refresh-Capsules-NOW-Foods/dp/B001EQ92VW?th=1",
+                "site": "vivanaturals.com",
+                "image_url": "https://m.media-amazon.com/images/I/71fW7Z6vFAL._AC_SL1500_.jpg",
+                "desc": "Synergistic blend of milk thistle, N-acetyl cysteine (NAC), methionine, and herbal antioxidants; non-GMO Project Verified and GMP-qualified. This is ideal for individuals wanting comprehensive antioxidant support—such as frequent travelers, people with high oxidative stress, or those following high-protein diets.",
+                "page_description": "**About this item**\n- Promotes optimal liver health with milk thistle plus herbal-enzyme blend.*\n- Supports healthy detoxification processes and normal liver enzyme levels.*\n- Non-GMO, vegetarian capsules produced in a GMP-certified facility.\n- Amazon’s Choice pick with thousands of 4-plus-star reviews."
+            },
+            {
+                "id": "liver_05",
+                "title": "Nutricost TUDCA 250 mg",
+                "product_url": "https://www.amazon.com/Nutricost-Tudca-250mg-Capsules-Tauroursodeoxycholic/dp/B01A68H2BA?th=1",
+                "site": "www.mollers.no",
+                "image_url": "https://m.media-amazon.com/images/I/61EJx7JnxfL._AC_SL1500_.jpg",
+                "desc": "Pure tauroursodeoxycholic acid (TUDCA) at 250 mg per veggie capsule; non-GMO, soy- and gluten-free; 3rd-party ISO-accredited lab tested; made in an FDA-registered, GMP facility. This is ideal for advanced users seeking bile-acid–based cellular protection—popular among those with cholestatic or high-fat-diet concerns.",
+                "page_description": "**About this item**\n- 250 mg TUDCA per capsule—research-backed bile acid for liver & cellular health.*\n- Convenient one-capsule daily serving; 60-count bottle is a two-month supply.\n- Non-GMO, soy- and gluten-free formula; ISO-accredited third-party tested.\n- Made in a GMP-compliant, FDA-registered U.S. facility."
+            },
+        ]
+    else:
+        # 默认结果
+        return [
+            {"title": "通用搜索结果1", "url": "https://example.com/result1"},
+            {"title": "通用搜索结果2", "url": "https://example.com/result2"}
+        ]
+# def show_google_search(with_ads: bool):
+#     col1, col2 = st.columns([6, 1])
+#     with col1:
+#         st.title("Querya search")
+#     with col2:
+#         end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
+#
+#     if end_clicked:
+#         # Full-screen centered message (clears interface)
+#         # st.session_state["end_clicked"] = True
+#         click_data = {
+#             "id": st.session_state.get("prolific_id", "unknown"),
+#             "start": st.session_state.get("start_time", datetime.now().isoformat()),
+#             "timestamp": datetime.now().isoformat(),
+#             "type": "end",
+#             "title": "Finish / End Session",
+#             "url": " "
+#         }
+#         save_to_gsheet(click_data)
+#         st.session_state.stage = "survey"
+#         st.rerun()  # Re-run to show the message cleanly in next render
+#
+#     # After rerun
+#     if st.session_state.get("end_clicked", False):
+#         st.markdown("<br><br><br>", unsafe_allow_html=True)
+#         st.markdown(
+#             "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
+#             unsafe_allow_html=True
+#         )
+#         st.stop()
+#
+#     if "search_results" not in st.session_state:
+#         st.session_state.search_results = []
+#
+#
+#
+#     def to_base64(path: str) -> str:
+#         return base64.b64encode(Path(path).read_bytes()).decode()
+#
+#     try:
+#         logo_b64 = to_base64("querya.png")
+#         st.markdown(
+#             f"""
+#             <div style="text-align:center; margin-top:20px;">
+#                 <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
+#             </div>
+#             """,
+#             unsafe_allow_html=True
+#         )
+#     except:
+#         st.write("Querya Search")
+#
+#     # Query box
+#     query = st.text_input("", placeholder="Input Key Words for Search Here (e.g., best fish oil supplements)")
+#     st.caption("Or pick one of the suggested queries:")
+#     chosen = render_suggestion_chips(SUGGESTED_QUERIES_SEARCH, "sug_search")
+#
+#     # If a chip is chosen, execute search immediately (acts like pressing Search)
+#     if chosen:
+#         results = do_fake_google_search(chosen)
+#         st.session_state.search_results = results
+#         if with_ads:
+#             st.session_state.current_ads = get_products_by_query(chosen)
+#         save_to_gsheet({
+#             "id": st.session_state.prolific_id,
+#             "start": st.session_state.start_time,
+#             "timestamp": datetime.now().isoformat(),
+#             "type": "search_submit",
+#             "title": chosen,
+#             "url": " "
+#         })
+#         st.rerun()
+#
+#     if st.button("Search"):
+#         results = do_fake_google_search(query)
+#         st.session_state.search_results = results
+#         if with_ads:
+#             st.session_state.current_ads = get_products_by_query(query)
+#         save_to_gsheet({
+#             "id": st.session_state.prolific_id,
+#             "start": st.session_state.start_time,
+#             "timestamp": datetime.now().isoformat(),
+#             "type": "search_submit",
+#             "title": query,
+#             "url": " "
+#         })
+#
+#     # Show stored search results
+#     if st.session_state.search_results:
+#         st.write("---")
+#         if with_ads:
+#             if "current_ads" not in st.session_state:
+#                 st.session_state.current_ads = []
+#             if st.session_state.current_ads:
+#                 show_advertisements(st.session_state.current_ads)
+#         st.write("**Search Results:**")
+#
+#         for item in st.session_state.search_results:
+#             show_product_item(item, link_type="organic", show_image=True, image_position="below")
+#
+#             if item["desc"]:
+#                 st.write(item["desc"])
+#             st.write("---")
+#
+#     # Show ads if any
 def show_google_search(with_ads: bool):
+    # ===== Header =====
     col1, col2 = st.columns([6, 1])
     with col1:
         st.title("Querya search")
     with col2:
-        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
-
+        end_clicked = st.button("Finish / End Session", key="end_button_inline")
     if end_clicked:
-        # Full-screen centered message (clears interface)
-        # st.session_state["end_clicked"] = True
-        click_data = {
-            "id": st.session_state.get("prolific_id", "unknown"),
-            "start": st.session_state.get("start_time", datetime.now().isoformat()),
+        save_to_gsheet({
+            "id":        st.session_state.get("prolific_id", "unknown"),
+            "start":     st.session_state.get("start_time", datetime.now().isoformat()),
             "timestamp": datetime.now().isoformat(),
-            "type": "end",
-            "title": "Finish / End Session",
-            "url": " "
-        }
-        save_to_gsheet(click_data)
+            "type":      "finish_click",
+            "title":     "Finish / End Session",
+            "url":       " "
+        })
         st.session_state.stage = "survey"
-        st.rerun()  # Re-run to show the message cleanly in next render
+        st.rerun()
 
-    # After rerun
-    if st.session_state.get("end_clicked", False):
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.markdown(
-            "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
-            unsafe_allow_html=True
-        )
-        st.stop()
+    # ===== State =====
+    st.session_state.setdefault("search_results", [])
+    st.session_state.setdefault("current_ads", [])
+    st.session_state.setdefault("search_started", False)  # 控制是否隐藏建议
 
-    if "search_results" not in st.session_state:
-        st.session_state.search_results = []
-
-    def do_fake_google_search(query):
-        lower_q = query.lower()
-
-        # 这里仅做示例返回几条伪搜索结果，可根据关键词控制输出
-
-        if ("鱼油" in lower_q) or ("fish" in lower_q):
-            return [
-                {
-                    "id": "fish_01",
-                    "title": "Nordic Naturals Ultimate Omega  ",
-                    "product_url": "https://www.amazon.com/Nordic-Naturals-Ultimate-Support-Healthy/dp/B002CQU564/ref=sr_1_1?content-id=amzn1.sym.c9738cef-0b5a-4096-ab1b-6af7c45832cd%3Aamzn1.sym.c9738cef-0b5a-4096-ab1b-6af7c45832cd&dib=eyJ2IjoiMSJ9.EmMg0Sjrk3Up1-B8Uq6XmXPfqBR6LsN4xh_xk9FkohcxjUGjjtl8VDmFPAv02s7DdvP4IMVJlYCiu4xLS3tkFzqAjY8zzLpTcrQiGDBHfSlCICd1rxDQrjuX09VNQDqQLzn3cHDWmdL3cWFyPa6GoFGZn3Y4_gA0M70XM89DcYOwpBeQlrC5yad9lab17AwZgciNRLxb8byU-LfuW17zz3q-IozuDG-egQAIeXgugVoJ8WRIvJz3NkILl22JMYtajLueBHt6DzsSWXw0pyyU1wzGr_pw1-I-LzakONQMKjk.5XQSZpgWB9fgxSBUCDKvd3csceCcXwJ8hgXGTLOIUrg&dib_tag=se&keywords=Nordic%2BNaturals%2BUltimate%2BOmega%2BCognition&pd_rd_r=dbeef994-8b31-4a6a-965d-1774b9bbb5c4&pd_rd_w=oTInk&pd_rd_wg=3hsHS&qid=1747570281&sr=8-1&th=1",
-                    "site": "www.iherb.com",
-                    "price": "$41.33",
-                    "specs": {
-                        "Brand": "Nordic Naturals",
-                        "Flavor": "Lemon",
-                        "Primary supplement type": "Omega-3",
-                        "Unit Count": "180 Count",
-                        "Item Form": "Softgel",
-                        "Item Weight": "0.69 lb"
-                    },
-                    "image_url": "https://m.media-amazon.com/images/I/61x5u8LMFWL._AC_SL1000_.jpg",
-                    "desc": "High-concentration EPA/DHA (650 mg Omega-3 per soft-gel); IFOS 5-star certified; triglyceride (TG) form for superior absorption. Ideal for cardiovascular health, anti-inflammatory needs, or anyone seeking a highly purified fish oil.",
-                    "page_description": "**About this item**\n- WHY OMEGA-3s – EPA & DHA support heart, brain, eye and immune health, and help maintain a healthy mood.\n- DOCTOR-RECOMMENDED dose meets American Heart Association guidelines for cardiovascular support.\n- BETTER ABSORPTION & TASTE – Triglyceride form with pleasant lemon flavor and zero fishy burps.\n- PURITY GUARANTEED – Wild-caught fish, non-GMO, gluten- & dairy-free with no artificial additives."
-                },
-                {
-                    "id": "fish_02",
-                    "title": "WHC UnoCardio 1000 ",
-                    "product_url": "https://www.amazon.com/stores/page/29B9D3D0-5A5E-4EEA-A0A2-D812CA2F8559/?_encoding=UTF8&store_ref=SB_A076637421Z7I7ERZ0TXQ-A03352931L0DK4Z7CLDKO&pd_rd_plhdr=t&aaxitk=49fae88956cfec31cfd29cac8b8abde1&hsa_cr_id=0&lp_asins=B00QFTGSK6%2CB01MQJZI9D%2CB07NLCBPGN&lp_query=WHC%20UnoCardio%201000&lp_slot=desktop-hsa-3psl&ref_=sbx_be_s_3psl_mbd_mb0_logo&pd_rd_w=kHhnR&content-id=amzn1.sym.5594c86b-e694-4e3e-9301-a074f0faf98a%3Aamzn1.sym.5594c86b-e694-4e3e-9301-a074f0faf98a&pf_rd_p=5594c86b-e694-4e3e-9301-a074f0faf98a&pf_rd_r=J95ESAZ01FFJGKDH15S5&pd_rd_wg=udhtB&pd_rd_r=1ca75ded-9d8a-4db4-9e02-4051fdc574f2",
-                    "site": "www.whc.clinic",
-                    "price": "$40.45",
-                    "specs": {
-                        "Brand": "WHC",
-                        "Flavor": "Natrual Orange",
-                        "Primary supplement type": "Omega-3",
-                        "Unit Count": "180 Count",
-                        "Item Form": "Softgel",
-                        "Item Weight": "16.8 ounces"
-                    },
-                    "image_url": "https://m.media-amazon.com/images/I/71htaA+bT9L._AC_SL1500_.jpg",
-                    "desc": "Ranked No. 1 globally by IFOS; Contains 1,000 mg Omega-3 (EPA + DHA) per soft-gel; enriched with vitamin D3; individually blister-packed to prevent oxidation. Ideal for middle-aged and older adults who demand top purity and a premium formulation.",
-                    "page_description": "**About this item**\n- 1 180 mg total Omega-3 (EPA 665 mg / DHA 445 mg) per soft-gel for heart, brain and vision.\n- Provides 1 000 IU vitamin D3 to support bones, muscles and immunity.\n- r-Triglyceride form for superior absorption; lactose- & gluten-free, burp-free orange flavor.\n- Ultra-pure, Friend-of-the-Sea-certified fish oil in beef-gelatin-free blister packs."
-                },
-                {
-                    "id": "fish_03",
-                    "title": "Now Foods Ultra Omega-3",
-                    "product_url": "https://www.amazon.com/NOW-Supplements-Molecularly-Distilled-Softgels/dp/B0BGQR8KSG/ref=sr_1_1?crid=1WK5FQS4N6VT9&dib=eyJ2IjoiMSJ9.sczFj7G5tzaluW3utIDJFvN3vRVXIKN8OW6iAI1rL8RiGXrbNcV75KmT0QHEw_-mrjN9Y2Z_QXZcyi9A3KwDB5TpToVICSiFPa7RnnItgqpDWW7DzU2ECbX73MLiBO0nOBcQe4If9EV_QeFtgmERZF360mEcTJ3ZfaxrOKNzI8A.dUyPZz9HZwZJIqkDLMtL5snAfj0y8Ayu3PNq8Ugt-WU&dib_tag=se&keywords=Now%2BFoods%2BUltra%2BOmega-3&qid=1747669011&sprefix=now%2Bfoods%2Bultra%2Bomega-3%2Caps%2C677&sr=8-1&th=1",
-                    "site": "www.iherb.com",
-                    "price": "$41.51",
-                    "specs": {
-                        "Brand": "Now Foods",
-                        "Flavor": "Unflavoured",
-                        "Primary supplement type": "Omega-3",
-                        "Unit Count": "180 Count",
-                        "Item Form": "Softgel",
-                        "Item Weight": "375 g"
-                    },
-                    "image_url": "https://m.media-amazon.com/images/I/71auVVCYKnL._AC_SX679_.jpg",
-                    "desc": "Great value (EPA 500 mg + DHA 250 mg per soft-gel); IFOS certified; suitable for long-term, everyday supplementation. This is ideal for general health maintenance, budget-conscious consumers, and daily nutritional support.",
-                    "page_description": "**About this item**\n- CARDIOVASCULAR SUPPORT – 600 mg EPA & 300 mg DHA per enteric-coated soft-gel.\n- MOLECULARLY DISTILLED for purity; tested free of PCBs, dioxins & heavy metals.\n- ENTERIC COATING reduces nausea and fishy aftertaste.\n- NON-GMO, Kosher and GMP-quality assured by the family-owned NOW® brand since 1968."
-                },
-                {
-                    "id": "fish_04",
-                    "title": "Blackmores OMEGA BRAIN Caps 60s",
-                    "product_url": "https://www.amazon.com.au/Blackmores-Omega-Triple-Concentrated-Capsules/dp/B0773JF7JX?th=1",
-                    "site": "vivanaturals.com",
-                    "price": "$40.9",
-                    "specs": {
-                        "Brand": "Blackmores",
-                        "Flavor": "Lutein",
-                        "Primary supplement type": "Omega-3",
-                        "Unit Count": "180 Count",
-                        "Item Form": "Tablet",
-                        "Item Weight": "0.39 Kilograms"
-                    },
-                    "image_url": "https://m.media-amazon.com/images/I/71UhUKoWbnL._AC_SL1500_.jpg",
-                    "desc": "Best-selling Australian pharmacy product; 900 mg Omega-3 per soft-gel; supports cardiovascular health. This is ideal for intensive cardiovascular support, joint health, and individuals seeking a high-dose omega-3 supplement.",
-                    "page_description": "**About this item**\n- One-a-day capsule delivers 500 mg DHA to maintain brain health and mental performance.\n- Provides four-times more DHA than standard fish oil—ideal if you eat little fish.\n- 100 % wild-caught small-fish oil rigorously tested for mercury, dioxins & PCBs.\n- Supports healthy growth in children and overall wellbeing for all ages."
-                },
-                {
-                    "id": "fish_05",
-                    "title": "Möller’s Norwegian Cod-Liver Oil",
-                    "product_url": "https://www.amazon.com.be/-/en/Mollers-Omega-Norwegian-Cod-Liver-Pruners/dp/B074XB9RNH?language=en_GB",
-                    "site": "www.mollers.no",
-                    "price": "$40.63",
-                    "specs": {
-                        "Brand": "Möller’s",
-                        "Flavor": "Lofoten",
-                        "Primary supplement type": "Fish Oil",
-                        "Unit Count": "8.4 Fluid Ounces",
-                        "Item Form": "Liquid",
-                        "Item Weight": "1.1 Pounds"
-                    },
-                    "image_url": "https://m.media-amazon.com/images/I/61eg-Vgm97L._AC_SL1500_.jpg",
-                    "desc": "Liquid fish oil enriched with natural vitamins A and D; trusted Nordic brand with over 100 years of history; suitable for children and pregnant women. This is ideal for family supplementation, children’s health, pregnancy nutritional support, and enhancing immune function.",
-                    "page_description": "**About this item**\n- Natural source of EPA & DHA to support heart, brain and vision.\n- Supplies vitamins A & D for immune function and normal bone growth.\n- Sustainably sourced Arctic cod and bottled under Norway’s century-old Möller’s quality standards.\n- Refreshing lemon flavor with no fishy aftertaste; kid- and pregnancy-friendly."
-                },
-            ]
-        # 如果搜索里包含'liver'
-        elif ("liver" in lower_q):
-            return [
-                {
-                    "id": "liver_01",
-                    "title": "Thorne Liver Cleanse",
-                    "product_url": "https://www.amazon.com/Thorne-Research-Cleanse-Detoxification-Capsules/dp/B07978NYC5",
-                    "site": "https://www.amazon.com/Thorne-Research-Cleanse-Detoxification-Capsules/dp/B07978NYC5",
-                    "image_url": "https://m.media-amazon.com/images/I/71eMoaqvJyL._AC_SL1500_.jpg",
-                    "desc": "Professional-grade formula that combines milk thistle (125 mg silymarin), burdock, chicory, berberine, and other botanicals; NSF-Certified for Sport®; produced in a GMP-compliant U.S. facility. This is ideal for individuals looking for a broad-spectrum botanical detox blend—especially those who value third-party testing and athlete-friendly certifications.",
-                    "page_description": "**About this item**\n- Synergistic botanical blend enhances detoxification and bile flow.*\n- Supports both Phase I and Phase II liver detox pathways.*\n- Also provides kidney-supportive herbs for comprehensive clearance.*\n- NSF Certified for Sport® and third-party tested for contaminants."
-                },
-                {
-                    "id": "liver_02",
-                    "title": "Himalaya LiverCare (Liv 52 DS)",
-                    "product_url": "https://www.amazon.com.be/-/en/Himalaya-Liv-52-DS-3-Pack/dp/B09MF88N71",
-                    "site": "www.whc.clinic",
-                    "image_url": "https://m.media-amazon.com/images/I/61VEN7Bl8wL._AC_SL1500_.jpg",
-                    "desc": "Clinically studied Ayurvedic blend (capers, chicory, black nightshade, arjuna, yarrow, etc.) shown to improve Child-Pugh scores and reduce ALT/AST in liver-compromised patients. This is ideal for those seeking a time-tested herbal formula with human-trial evidence, including individuals with mild enzyme elevations or high environmental/toxic exposure.",
-                    "page_description": "**About this item**\n- Herbal liver-cleanse formula that helps detoxify and protect liver cells.*\n- Boosts metabolic capacity and promotes healthy bile production for digestion.*\n- Vegan caplets free of gluten, dairy, soy, corn, nuts and animal gelatin; non-GMO.\n- Trusted Ayurvedic brand since 1930 with decades of clinical research."
-                },
-                {
-                    "id": "liver_03",
-                    "title": "Jarrow Formulas Milk Thistle (150 mg)",
-                    "product_url": "https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1",
-                    "site": "https://www.amazon.com/Jarrow-Formulas-Silymarin-Marianum-Promotes/dp/B0013OULVA?th=1",
-                    "image_url": "https://m.media-amazon.com/images/I/71G03a0TYUL._AC_SL1500_.jpg",
-                    "desc": "It contains 30:1 standardized silymarin phytosome bonded to phosphatidylcholine for up-to-30× higher bioavailability than conventional milk thistle; vegetarian capsules; gluten-, soy-, and dairy-free. This is ideal for people who need a concentrated, highly absorbable milk-thistle extract—e.g., those on multiple medications or with occasional alcohol use.",
-                    "page_description": "**About this item**\n- 150 mg 30:1 milk-thistle extract standardized to 80 % silymarin flavonoids.\n- Helps raise glutathione levels for healthy liver detoxification.*\n- Provides antioxidant protection against free-radical damage.*\n- Easy-to-swallow veggie capsules; adults take 1–3 daily as directed."
-                },
-                {
-                    "id": "liver_04",
-                    "title": "NOW Foods Liver Refresh™",
-                    "product_url": "https://www.amazon.com/Liver-Refresh-Capsules-NOW-Foods/dp/B001EQ92VW?th=1",
-                    "site": "vivanaturals.com",
-                    "image_url": "https://m.media-amazon.com/images/I/71fW7Z6vFAL._AC_SL1500_.jpg",
-                    "desc": "Synergistic blend of milk thistle, N-acetyl cysteine (NAC), methionine, and herbal antioxidants; non-GMO Project Verified and GMP-qualified. This is ideal for individuals wanting comprehensive antioxidant support—such as frequent travelers, people with high oxidative stress, or those following high-protein diets.",
-                    "page_description": "**About this item**\n- Promotes optimal liver health with milk thistle plus herbal-enzyme blend.*\n- Supports healthy detoxification processes and normal liver enzyme levels.*\n- Non-GMO, vegetarian capsules produced in a GMP-certified facility.\n- Amazon’s Choice pick with thousands of 4-plus-star reviews."
-                },
-                {
-                    "id": "liver_05",
-                    "title": "Nutricost TUDCA 250 mg",
-                    "product_url": "https://www.amazon.com/Nutricost-Tudca-250mg-Capsules-Tauroursodeoxycholic/dp/B01A68H2BA?th=1",
-                    "site": "www.mollers.no",
-                    "image_url": "https://m.media-amazon.com/images/I/61EJx7JnxfL._AC_SL1500_.jpg",
-                    "desc": "Pure tauroursodeoxycholic acid (TUDCA) at 250 mg per veggie capsule; non-GMO, soy- and gluten-free; 3rd-party ISO-accredited lab tested; made in an FDA-registered, GMP facility. This is ideal for advanced users seeking bile-acid–based cellular protection—popular among those with cholestatic or high-fat-diet concerns.",
-                    "page_description": "**About this item**\n- 250 mg TUDCA per capsule—research-backed bile acid for liver & cellular health.*\n- Convenient one-capsule daily serving; 60-count bottle is a two-month supply.\n- Non-GMO, soy- and gluten-free formula; ISO-accredited third-party tested.\n- Made in a GMP-compliant, FDA-registered U.S. facility."
-                },
-            ]
-        else:
-            # 默认结果
-            return [
-                {"title": "通用搜索结果1", "url": "https://example.com/result1"},
-                {"title": "通用搜索结果2", "url": "https://example.com/result2"}
-            ]
-
+    # ===== (可选) Logo =====
     def to_base64(path: str) -> str:
         return base64.b64encode(Path(path).read_bytes()).decode()
 
     try:
         logo_b64 = to_base64("querya.png")
         st.markdown(
-            f"""
-            <div style="text-align:center; margin-top:20px;">
-                <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
-            </div>
-            """,
+            f"<div style='text-align:center; margin-top:20px;'><img src='data:image/png;base64,{logo_b64}' style='height:80px;' /></div>",
             unsafe_allow_html=True
         )
-    except:
+    except Exception:
         st.write("Querya Search")
 
-    query = st.text_input("", placeholder="Input Key Words for Search Here")
-    if st.button("Search"):
-        results = do_fake_google_search(query)
-        st.session_state.search_results = results
-        if with_ads:
-            prods = get_products_by_query(query)
-            st.session_state.current_ads = prods
+    # ===== 搜索执行辅助：统一结果、广告、日志 =====
+    def run_search(q: str):
+        q = (q or "").strip()
+        if not q:
+            return
+        # 1) 获取结果：优先用你原来的 do_fake_google_search；如果不存在，就用 fallback
+        results = None
+        try:
+            # 如果你把 do_fake_google_search 定义在本函数里，保留原实现即可
+            results = do_fake_google_search(q)  # noqa: F821  # 由你现有代码提供
+        except Exception:
+            # fallback：用广告产品生成简单“自然结果”，保证不报错
+            simple = []
+            for p in get_products_by_query(q):
+                simple.append({
+                    "id": p.get("id", ""),
+                    "title": p.get("title", ""),
+                    "product_url": p.get("product_url", " "),
+                    "site": "",
+                    "image_url": p.get("image_url", ""),
+                    "desc": p.get("description", ""),
+                    "page_description": p.get("page_description", "")
+                })
+            results = simple
 
-    # Show stored search results
+        st.session_state.search_results = results or []
+
+        # 2) 写入广告（如果有广告条件）
+        st.session_state.current_ads = get_products_by_query(q) if with_ads else []
+
+        # 3) 日志
+        save_to_gsheet({
+            "id":        st.session_state.prolific_id,
+            "start":     st.session_state.start_time,
+            "timestamp": datetime.now().isoformat(),
+            "type":      "search_submit",
+            "title":     q,
+            "url":       " "
+        })
+
+    # ===== 建议查询（chips）——仅在首次搜索前显示 =====
+    SUGGESTED_QUERIES_SEARCH = [
+        "best fish oil supplements",
+        "top omega‑3 fish oils",
+        "fish oil for heart health",
+        "high EPA DHA fish oil",
+        "omega‑3 for brain function"
+    ]
+
+    if not st.session_state.search_started:
+        # —— 首搜前：输入框 + 建议 chips ——
+        query = st.text_input(
+            "",
+            placeholder="Input Key Words for Search Here (e.g., best fish oil supplements)",
+            key="first_search_query"
+        )
+        st.caption("Or pick one of the suggested queries:")
+
+        # 简单 3 列 chips；若你已实现 render_suggestion_chips(...)，也可改用那个
+        chosen = render_suggestion_chips(SUGGESTED_QUERIES_SEARCH, "sug_search")
+
+        # —— 选择了建议：立即搜索 + 隐藏建议 ——
+        if chosen:
+            st.session_state.search_started = True
+            run_search(chosen)
+            st.rerun()
+
+        # —— 点击 Search：立即搜索 + 隐藏建议 ——
+        if st.button("Search", key="btn_search_first"):
+            st.session_state.search_started = True
+            run_search(query)
+            st.rerun()
+
+        # 首搜前不渲染结果
+        return
+
+    else:
+        # —— 首搜之后：不再显示 chips（可保留一个再次搜索输入框；不要求可删除） ——
+        query2 = st.text_input("", placeholder="Search again (optional)", key="search_again")
+        if st.button("Search", key="btn_search_again"):
+            run_search(query2)
+            st.rerun()
+
+    # ===== 渲染结果（ADS FIRST → Organic） =====
     if st.session_state.search_results:
+        # Ads box on top
+        if with_ads and st.session_state.current_ads:
+            show_advertisements(st.session_state.current_ads)
+
         st.write("---")
         st.write("**Search Results:**")
-
         for item in st.session_state.search_results:
             show_product_item(item, link_type="organic", show_image=True, image_position="below")
-
-            if item["desc"]:
+            if item.get("desc"):
                 st.write(item["desc"])
             st.write("---")
 
-    # Show ads if any
-    if with_ads:
-        if "current_ads" not in st.session_state:
-            st.session_state.current_ads = []
-        if st.session_state.current_ads:
-            show_advertisements(st.session_state.current_ads)
 
 
 ############################################
