@@ -385,7 +385,7 @@ def render_instructions_page():
     # st.warning("Estimated time: about **2–3 minutes**. Please interact naturally as if you were shopping online.")
         # 30-second hold (auto-advance, no clicks)
     # ---- 30s 限制逻辑（不自动跳转；仅拦截 Next）----
-    HOLD_SECONDS = 30
+    HOLD_SECONDS = 20
     if "instructions_start_ts" not in st.session_state:
         st.session_state.instructions_start_ts = time.time()
 
