@@ -46,7 +46,6 @@ def get_credentials_from_secrets():
     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
     
-
     return creds_dict
 
 
@@ -172,6 +171,21 @@ div.stButton > button[title="chip"]:hover{
 """
 st.markdown(SUGGESTION_CHIPS_CSS, unsafe_allow_html=True)
 
+SURVEY_FONTS_CSS = """
+<style>
+/* Make radio/select labels & options match body size */
+div[data-testid="stRadio"] label,
+div[data-testid="stRadio"] div[role="radiogroup"] label span,
+div[data-testid="stSelectbox"] label,
+div[data-testid="stSelectbox"] div[role="combobox"],
+div[data-testid="stSelectbox"] div[role="listbox"] * {
+    font-size: 1rem !important;
+    line-height: 1.35 !important;
+}
+</style>
+"""
+st.markdown(SURVEY_FONTS_CSS, unsafe_allow_html=True)
+
 
 SPEC_TABLE_CSS = """
 <style>
@@ -214,7 +228,60 @@ def get_variant_flags():
     group_label = "AI Assistant" if is_ai else "Search Engine"
     return v, is_ai, with_ads, group_label
 
+def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
+    if is_ai:
+        body = (
+            "Imagine you are shopping for a **fish oil supplement**. \n\n"
+            "To help you decide which product to purchase, you will use an AI chatbot (“**Querya**”) to get some recommended products to consider. \n\n"
+            " **Please follow these steps:**\n"
+            "1. **Click the `Next / Start` button** below to open the AI chatbot.  \n"
+            "2. **Ask for product recommendations.** For example, you might type:  \n"
+            "   - “Can you recommend some fish oil supplements?”\n"
+            "   - “Please recommend some fish oils.”\n"
+            "You can also use any similar phrasing you would naturally use when chatting with an assistant.\n"
+            "3. **Treat this task as if you were genuinely shopping for yourself.** \n "
+            "Feel free to explore the recommended products by clicking their links and viewing them naturally, just as you would in real life.\n"
+            "4. **If you’re interested in any product**, you may click the **`Add to Cart`** button at the top-right corner of its page.\n"
+            "5. **When you’re done browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.\n"
+            "6. **Finally**, complete a short questionnaire about your experience."
+        )
+    else:
+        body = (
+            "Imagine you are shopping for a **fish oil supplement**. \n\n"
+            "To help you decide which product to purchase, you will use a search engine (“**Querya**”) to find some recommended products.\n\n"
+            " **Please follow these steps:**\n"
+            "1. **Click the `Next / Start` button** below to open the AI chatbot.  \n"
+            "2. **Ask for product recommendations.** For example, you might type:  \n"
+            "   - “Can you recommend some fish oil supplements?”\n"
+            "   - “Please recommend some fish oils.”\n"
+            "You can also use any similar phrasing you would naturally use when chatting with an assistant.\n"
+            "3. **Treat this task as if you were genuinely shopping for yourself.** \n "
+            "Feel free to explore the recommended products by clicking their links and viewing them naturally, just as you would in real life.\n"
+            "4. **If you’re interested in any product**, you may click the **`Add to Cart`** button at the top-right corner of its page.\n"
+            "5. **When you’re done browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.\n"
+            "6. **Finally**, complete a short questionnaire about your experience."
+        )
+    note = "" #"\n\n> This condition may include **Sponsored** results." if with_ads else ""
+    return f"### Instructions\n{body}{note}"
 
+
+def instructions_button_inline():
+    """Render an inline 'Instructions' button beside title."""
+    _, is_ai, with_ads, _ = get_variant_flags()
+    md = _build_instructions_md(is_ai, with_ads)
+
+    # Prefer popover if available (Streamlit >= 1.31)
+    if hasattr(st, "popover"):
+        with st.popover("ℹ️ Instructions"):
+            st.markdown(md)
+    else:
+        # Fallback: toggle an inline info box
+        show = st.session_state.get("_show_instr_box", False)
+        if st.button("ℹ️ Instructions"):
+            st.session_state["_show_instr_box"] = not show
+            st.rerun()
+        if st.session_state.get("_show_instr_box", False):
+            st.info(md)
 def render_specs_table(specs: dict | None):
     if not specs:
         return
@@ -273,17 +340,15 @@ def parse_markdown_links(source):
 SUGGESTED_QUERIES_AI = [
     "Can you recommend some fish oil supplements?",
     "Please recommend some fish oils.",
-    "Which fish oil is best for heart health?",
-    "Any high‑EPA/DHA fish oil recommendations?",
-    "Omega‑3 for brain function — what do you suggest?"
+    "Which fish oil do you recommend?",
+    "Any fish oil recommendations?"
 ]
 
 SUGGESTED_QUERIES_SEARCH = [
-    "best fish oil supplements",
-    "top omega‑3 fish oils",
-    "fish oil for heart health",
-    "high EPA DHA fish oil",
-    "fish oil for brain function"
+    "fish oils",
+    "fish oil supplements",
+    "Can you recommend some fish oil supplements?",
+    "Please recommend some fish oils."
 ]
 
 def render_suggestion_chips(queries: list[str], prefix: str) -> str | None:
@@ -399,7 +464,7 @@ def render_instructions_page():
     next_clicked = st.button("Next")
     if next_clicked:
         if remaining > 0:
-            st.error(f"Please read the instructions for at least 30 seconds before proceeding. "
+            st.error(f"Please read the instructions for at least 20 seconds before proceeding. "
                      f"{remaining}s remaining.")
             # 记录过早点击
             save_to_gsheet({
@@ -552,8 +617,8 @@ def render_final_survey_page():
         # 4) Relationship (IOS + 4 items)
         # st.markdown("### Relationship Closeness (IOS)")
         st.markdown(
-            f"In the pairs of circles below, one circle represents **you**, and the other represents **{SYS_NOUN_PLURAL}**. "
-            "The amount of overlap indicates closeness. Please select the pair that best represents your feelings."
+            f"**In the pairs of circles below, one circle represents you, and the other represents the {SYS_NOUN}.** "
+            "**The amount of overlap indicates closeness. Please select the pair that best represents your feelings.**"
         )
         ios_image()
         ios_choice = st.radio(
@@ -582,13 +647,30 @@ def render_final_survey_page():
         # ============= GENERAL / MANIPULATION CHECKS =============
 
         # st.markdown("### Manipulation Check")
+        # mc_tool = st.radio(
+        #     "**What did you use to seek recommended products in this study?**",
+        #     ["An AI chatbot", "A search engine"], index=None, key="mc_tool"
+        # )
+        # mc_ads = st.radio(
+        #     "**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**",
+        #     ["Yes", "No"], index=None, key="mc_ads"
+        # )
+        st.markdown("**What did you use to seek recommended products in this study?**")
         mc_tool = st.radio(
-            "**What did you use to seek recommended products in this study?**",
-            ["An AI chatbot", "A search engine"], index=None, key="mc_tool"
+            label="",
+            options=["An AI chatbot", "A search engine"],
+            index=None,
+            key="mc_tool",
+            label_visibility="collapsed"
         )
+
+        st.markdown("**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**")
         mc_ads = st.radio(
-            "**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**",
-            ["Yes", "No"], index=None, key="mc_ads"
+            label="",
+            options=["Yes", "No"],
+            index=None,
+            key="mc_ads",
+            label_visibility="collapsed"
         )
         st.markdown("---")
 
@@ -644,24 +726,49 @@ def render_final_survey_page():
 
         # ============= DEMOGRAPHICS =============
         # st.markdown("### Demographics (all required)")
-        age_str = st.text_input("Your age", value="", key="demo_age_text")
+        st.markdown("**Your age:**")
+        age_str = st.text_input(
+            label="",
+            value="",
+            key="demo_age_text",
+            placeholder="Enter an integer between 18 and 99",
+            label_visibility="collapsed"
+        )
 
-        sex = st.radio("Your sex", ["Male", "Female"], index=None, key="demo_sex")
+        st.markdown("**Your sex:**")
+        sex = st.radio(
+            label="",
+            options=["Male", "Female"],
+            index=None,
+            key="demo_sex",
+            label_visibility="collapsed"
+        )
 
+        st.markdown("**Your educational background:**")
         edu = st.selectbox(
-            "Your educational background",
-            ["Less than high school", "High school graduate", "Bachelor or equivalent", "Master", "Doctorate"],
-            index=None, placeholder="Select…", key="demo_edu"
+            label="",
+            options=["Less than high school", "High school graduate", "Bachelor or equivalent", "Master", "Doctorate"],
+            index=None,
+            placeholder="Select…",
+            key="demo_edu",
+            label_visibility="collapsed"
         )
 
+        st.markdown("**Your ethnicity:**")
         ethnicity = st.selectbox(
-            "Your ethnicity",
-            ["White", "Black or African American", "American Indian or Alaska Native",
-             "Asian", "Native Hawaiian or Pacific Islander", "Other"],
-            index=None, placeholder="Select…", key="demo_ethnicity"
+            label="",
+            options=[
+                "White", "Black or African American", "American Indian or Alaska Native",
+                "Asian", "Native Hawaiian or Pacific Islander", "Other"
+            ],
+            index=None,
+            placeholder="Select…",
+            key="demo_ethnicity",
+            label_visibility="collapsed"
         )
 
-        comments = st.text_area("Other comments (optional)", key="open_comments")
+        st.markdown("**Other comments (optional)**")
+        comments = st.text_area("", placeholder="Type any additional thoughts here…", key="open_comments")
 
         # submit
         submitted = st.form_submit_button("Submit & Redirect")
@@ -1563,11 +1670,14 @@ def get_products_by_query(query: str):
 def show_deepseek_recommendation(with_ads: bool):
     """AI-chat condition: one-shot query with ads-first rendering and suggested prompts."""
     # -------- Header --------
-    col1, col2 = st.columns([6, 1])
+    col1, col_mid, col2 = st.columns([5.6, 1.6, 1])
     with col1:
         st.title("Querya Rec")
+    with col_mid:
+        instructions_button_inline()
     with col2:
-        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant','')}")
+        end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
+
     if end_clicked:
         save_to_gsheet({
             "id":        st.session_state.get("prolific_id", "unknown"),
@@ -1587,6 +1697,14 @@ def show_deepseek_recommendation(with_ads: bool):
     st.session_state.setdefault("first_message_submitted", False)
     st.session_state.setdefault("pending_first_message", None)
     st.session_state.setdefault("current_ads", [])
+    ads_shown_this_render = False  # to avoid double rendering in a single run
+
+    # ===== TOP AD SLOT (固定在标题下方) =====
+    ad_slot = st.container()  # 所有广告只往这个容器里渲染
+    # 若已有广告（上一轮已计算），先把它们放到最上方
+    if with_ads and st.session_state.get("current_ads"):
+        with ad_slot:
+            show_advertisements(st.session_state.current_ads)
 
     # -------- Render past turns --------
     for role, content in st.session_state.history:
@@ -1597,6 +1715,11 @@ def show_deepseek_recommendation(with_ads: bool):
                 display_parsed_markdown(content, link_type="deepseek")
         else:
             st.chat_message(role).write(content)
+
+    # -------- Persistent ADS box at top after the first query --------
+    # if with_ads and st.session_state.get("current_ads"):
+    #     show_advertisements(st.session_state.current_ads)
+    #     ads_shown_this_render = True
 
     # -------- If we have a pending first message, process it once --------
     if st.session_state.first_message_submitted and st.session_state.pending_first_message:
@@ -1619,6 +1742,7 @@ def show_deepseek_recommendation(with_ads: bool):
             st.session_state.current_ads = prods
             if prods:
                 show_advertisements(prods)
+                ads_shown_this_render = True
 
         # 2) Then organic response
         predefined = get_predefined_response(user_first_input)
@@ -1664,9 +1788,8 @@ def show_deepseek_recommendation(with_ads: bool):
         SUGGESTED_QUERIES_AI = [
             "Can you recommend some fish oil supplements?",
             "Please recommend some fish oils.",
-            "Which fish oil are good?",
-            "Any fish oil recommendations?",
-            "Fish oil for brain function — what do you suggest?"
+            "Which fish oils are good?",
+            "Any fish oil recommendations?"
         ]
         # st.caption("Or pick a suggested prompt:")
         # cols = st.columns(3)
@@ -1970,11 +2093,14 @@ def do_fake_google_search(query):
 #     # Show ads if any
 def show_google_search(with_ads: bool):
     # ===== Header =====
-    col1, col2 = st.columns([6, 1])
+    col1, col_mid, col2 = st.columns([5.6, 1.6, 1])
     with col1:
         st.title("Querya search")
+    with col_mid:
+        instructions_button_inline()
     with col2:
         end_clicked = st.button("Finish / End Session", key="end_button_inline")
+
     if end_clicked:
         save_to_gsheet({
             "id":        st.session_state.get("prolific_id", "unknown"),
@@ -2046,13 +2172,13 @@ def show_google_search(with_ads: bool):
         })
 
     # ===== 建议查询（chips）——仅在首次搜索前显示 =====
-    SUGGESTED_QUERIES_SEARCH = [
-        "best fish oil supplements",
-        "top omega‑3 fish oils",
-        "fish oil for heart health",
-        "high EPA DHA fish oil",
-        "omega‑3 for brain function"
-    ]
+    # SUGGESTED_QUERIES_SEARCH = [
+    #     "best fish oil supplements",
+    #     "top omega‑3 fish oils",
+    #     "fish oil for heart health",
+    #     "high EPA DHA fish oil",
+    #     "omega‑3 for brain function"
+    # ]
 
     if not st.session_state.search_started:
         # —— 首搜前：输入框 + 建议 chips ——
