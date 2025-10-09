@@ -131,6 +131,19 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# --- Hide Streamlit's default toolbar & icons (top-right corner) ---
+HIDE_STREAMLIT_STYLE = """
+<style>
+/* Hide the hamburger menu, deploy/share/star buttons, fullscreen icon */
+#MainMenu {visibility: hidden;}
+header [data-testid="stToolbarActions"] {display: none !important;}
+header [data-testid="stToolbar"] {display: none !important;}
+footer {visibility: hidden;}
+</style>
+"""
+st.markdown(HIDE_STREAMLIT_STYLE, unsafe_allow_html=True)
+
+
 LINK_BUTTON_CSS = """
 <style>
 /* Turn all Streamlit buttons into link-style text */
