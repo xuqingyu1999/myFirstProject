@@ -891,9 +891,9 @@ def render_final_survey_page():
             st.rerun()
     
         # Display success after rerun
-        if st.session_state.completed:
-            st.success("✅ Session completed")
-            st.stop()
+        # if st.session_state.completed:
+        #     st.success("✅ Session completed")
+        st.stop()
 
 
 def render_predefined_products(prod_list, heading, link_type="organic"):
