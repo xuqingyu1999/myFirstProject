@@ -784,7 +784,7 @@ def render_final_survey_page():
         comments = st.text_area("", placeholder="Type any additional thoughts here…", key="open_comments")
 
         # submit
-        submitted = st.form_submit_button("Submit & Redirect")
+        submitted = st.form_submit_button("Submit")
 
     # ---------- validation & submission ----------
     if submitted:
@@ -880,7 +880,7 @@ def render_final_survey_page():
         target = get_completion_url()
         st.success("Submitted. Redirecting to the completion page…")
         # st_javascript(f'window.location.href = "{target}";')
-        st.markdown(f'<meta http-equiv="refresh" content="0; url={target}">', unsafe_allow_html=True)
+        #st.markdown(f'<meta http-equiv="refresh" content="0; url={target}">', unsafe_allow_html=True)
         st.link_button("If not redirected, click here to complete", target)
         #     time.sleep(10)
         # except Exception:
