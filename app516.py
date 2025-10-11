@@ -263,15 +263,15 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
             "Imagine you are shopping for a **fish oil supplement**. \n\n"
             "To help you decide which product to purchase, you will use a search engine (“**Querya**”) to find some recommended products.\n\n"
             " **Please follow these steps:**\n"
-            "1. **Click the `Next / Start` button** below to open the AI chatbot.  \n"
-            "2. **Ask for product recommendations.** For example, you might type:  \n"
-            "   - “Can you recommend some fish oil supplements?”\n"
-            "   - “Please recommend some fish oils.”\n"
-            "You can also use any similar phrasing you would naturally use when chatting with an assistant.\n"
+            "1. **Click the `Next / Start` button** below to open the search engine.  \n"
+            "2. Enter keywords to get product recommendations. For example, you might type:  \n"
+            "   - “Fish oil supplements”\n"
+            "   - “Fish oils”\n"
+            "Or use any other terms you would naturally type into a search engine.\n"
             "3. **Treat this task as if you were genuinely shopping for yourself.** \n "
             "Feel free to explore the recommended products by clicking their links and viewing them naturally, just as you would in real life.\n"
             "4. **If you’re interested in any product**, you may click the **`Add to Cart`** button at the top-right corner of its page.\n"
-            "5. **When you’re done browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.\n"
+            "5. **When you’re done browsing**, close the search engine by selecting **`Finish / End Session`** in the top-right corner of the conversation page.\n"
             "6. **Finally**, complete a short questionnaire about your experience."
         )
     note = "" #"\n\n> This condition may include **Sponsored** results." if with_ads else ""
@@ -439,9 +439,9 @@ def render_instructions_page():
 
                 **Please follow these steps:**
 
-                1. **Click the `Next / Start` button** below to open the AI chatbot.  
+                1. **Click the `Next / Start` button** below to open the search engine.  
 
-                2. **Ask for product recommendations.** For example, you might type:  
+                2. Enter keywords to get product recommendations. For example, you might type:  
                    - “Fish oil supplements”  
                    - “Fish oils”  
 
@@ -452,7 +452,7 @@ def render_instructions_page():
 
                 4. **If you’re interested in a product**, you may click the **`Add to Cart`** button at the top-right corner of its page.
 
-                5. **When you’re finished browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the results page.
+                5. **When you’re finished browsing**, close the search engine by selecting **`Finish / End Session`** in the top-right corner of the results page.
 
                 6. **Finally**, complete a short questionnaire about your experience.
                 """)
