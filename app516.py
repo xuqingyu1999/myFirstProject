@@ -271,7 +271,7 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
             "3. **Treat this task as if you were genuinely shopping for yourself.** \n "
             "Feel free to explore the recommended products by clicking their links and viewing them naturally, just as you would in real life.\n"
             "4. **If you’re interested in any product**, you may click the **`Add to Cart`** button at the top-right corner of its page.\n"
-            "5. **When you’re done browsing**, close the search engine by selecting **`Finish / End Session`** in the top-right corner of its page.\n"
+            "5. **When you’re done browsing**, close the search engine by selecting **`Finish / End Session`** in the top-right corner of the results page.\n"
             "6. **Finally**, complete a short questionnaire about your experience."
         )
     note = "" #"\n\n> This condition may include **Sponsored** results." if with_ads else ""
@@ -423,7 +423,7 @@ def render_instructions_page():
 
         4. **If you’re interested in any product**, you may click the **`Add to Cart`** button at the top-right corner of its page.
 
-        5. **When you’re done browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of its page.
+        5. **When you’re done browsing**, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.
 
         6. **Finally**, complete a short questionnaire about your experience.
         """)
