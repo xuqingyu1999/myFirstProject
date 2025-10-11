@@ -878,10 +878,10 @@ def render_final_survey_page():
         })
 
         target = get_completion_url()
-        st.success("Submitted. Redirecting to the completion page…")
+        st.success("Submitted. Please click the button below to redirect to the completion page…")
         # st_javascript(f'window.location.href = "{target}";')
         #st.markdown(f'<meta http-equiv="refresh" content="0; url={target}">', unsafe_allow_html=True)
-        st.link_button("If not redirected, click here to complete", target)
+        st.link_button("Please click here to complete", target)
         #     time.sleep(10)
         # except Exception:
         #     st.markdown(f"[If not redirected, click here to complete]({target})")
