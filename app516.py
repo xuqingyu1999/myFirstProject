@@ -93,6 +93,8 @@ if "variant" not in st.session_state:
     # 1: AI w/o ads, 2: AI + ads, 3: Search w/o ads, 4: Search + ads
     st.session_state.variant = random.randint(1, 4)
 
+if "completed" not in st.session_state:
+    st.session_state.completed = False
 ############################################
 # Step 0: Page config & DeepSeek client
 ############################################
@@ -878,15 +880,20 @@ def render_final_survey_page():
         })
 
         target = get_completion_url()
-        st.success("Submitted. Please click the button below to redirect to the completion page…")
+        # st.success("Submitted. Please click the button below to redirect to the completion page…")
         # st_javascript(f'window.location.href = "{target}";')
-        #st.markdown(f'<meta http-equiv="refresh" content="0; url={target}">', unsafe_allow_html=True)
-        st.link_button("Please click here to complete", target)
-        #     time.sleep(10)
-        # except Exception:
-        #     st.markdown(f"[If not redirected, click here to complete]({target})")
+        # st.markdown(f'<meta http-equiv="refresh" content="0; url={target}">', unsafe_allow_html=True)
+        st.success("Submitted. Please click below to complete:")
 
-        st.stop()
+        # Create link button
+        if st.link_button("Please click here to complete", target):
+            st.session_state.completed = True
+            st.rerun()
+    
+        # Display success after rerun
+        if st.session_state.completed:
+            st.success("✅ Session completed")
+            st.stop()
 
 
 def render_predefined_products(prod_list, heading, link_type="organic"):
