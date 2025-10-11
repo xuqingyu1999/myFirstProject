@@ -888,7 +888,7 @@ def render_final_survey_page():
         # Create link button
         if st.link_button("Please click here to complete", target):
             st.session_state.completed = True
-            st.rerun()
+            # st.rerun()
     
         # Display success after rerun
         # if st.session_state.completed:
