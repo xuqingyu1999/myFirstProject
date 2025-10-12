@@ -235,6 +235,70 @@ st.markdown(
 ############################################
 # 2) Regex-based parser for [Title](URL) links in LLM text
 ############################################
+def _detect_device():
+    """
+    用 JS 读取 userAgent、屏幕宽度等，返回 dict 并写入 session_state。
+    规则（可调）：宽度 < 900 或 UA 含 mobile/tablet 视为 mobile/tablet。
+    """
+    js = """
+    const ua = navigator.userAgent || "";
+    const width  = Math.max(document.documentElement.clientWidth,  window.innerWidth  || 0);
+    const height = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+    const isMobileUA = /Mobile|Android|iP(hone|od)|Phone/i.test(ua);
+    const isTabletUA = /iPad|Tablet/i.test(ua);
+    return {ua, width, height, isMobileUA, isTabletUA};
+    """
+    try:
+        info = st_javascript(js)
+    except Exception:
+        info = None
+    if not info:
+        return
+
+    st.session_state["_device_info"] = info
+    # 规则：宽度<900 或 UA 标记为移动/平板 → 视为非桌面
+    st.session_state["_is_mobile_like"] = bool(
+        info.get("isMobileUA") or info.get("isTabletUA") or (info.get("width", 1200) < 900)
+    )
+
+
+def gate_by_device():
+    """
+    放在 main() 顶部调用。若判定为移动端，则展示拦截页并 st.stop()。
+    同时写日志到 Google Sheet。
+    """
+    if "_is_mobile_like" not in st.session_state:
+        _detect_device()
+
+    # 如果无法检测（极少数情况），默认放行；你也可以改为默认拦截
+    is_mobile_like = st.session_state.get("_is_mobile_like", False)
+
+    if is_mobile_like:
+        # 记录 1 次拦截
+        save_to_gsheet({
+            "id":        st.session_state.get("prolific_id", "unknown"),
+            "start":     st.session_state.get("start_time", datetime.now().isoformat()),
+            "timestamp": datetime.now().isoformat(),
+            "type":      "device_block",
+            "title":     str(st.session_state.get("_device_info", {})),
+            "url":       " "
+        })
+
+        st.title("Desktop/Laptop Required")
+        st.error("For performance and consistency, this study must be completed on a **desktop or laptop**.")
+        st.markdown(
+            "- Please open this link on a computer (Chrome/Edge/Firefox/Safari).\n"
+            "- If you are on iPad/phone, switch to a computer and re-open the same link.\n"
+        )
+        # 可选：给一个“复制链接”按钮
+        try:
+            st.link_button("Copy study link", "javascript:void(0)")
+            st.caption("Or simply bookmark this page and open it on your desktop.")
+        except Exception:
+            pass
+        st.stop()
+
+
 def get_variant_flags():
     """Return (variant, is_ai, with_ads, group_label)."""
     v = st.session_state.get("variant", 4)
@@ -2254,6 +2318,7 @@ def show_google_search(with_ads: bool):
 # Main App Flow
 ############################################
 def main():
+    gate_by_device()
     if st.session_state.stage == "pid":
         st.title("Welcome!")
         pid = st.text_input("Please enter your Prolific ID:")
