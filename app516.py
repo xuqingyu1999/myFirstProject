@@ -231,15 +231,49 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+def inject_mobile_overlay_css(width_threshold: int = 900):
+    st.markdown(f"""
+    <style>
+    #__mobile_block_overlay__ {{
+        display: none;
+    }}
+    @media (max-width: {width_threshold}px) {{
+        #__mobile_block_overlay__ {{
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: #ffffff;
+            z-index: 10000;
+            padding: 28px;
+            overflow: auto;
+        }}
+        #__mobile_block_overlay__ h1 {{
+            margin-top: 0;
+            font-size: 1.5rem;
+        }}
+    }}
+    </style>
+    <div id="__mobile_block_overlay__">
+      <h1>Desktop/Laptop Required</h1>
+      <p>For performance and consistency, this study must be completed on a <b>desktop or laptop</b>.</p>
+      <ul>
+        <li>Please open this link on a computer (Chrome / Edge / Firefox / Safari).</li>
+        <li>If you are on a phone/tablet, switch to a desktop/laptop and re-open the same link.</li>
+      </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 ############################################
 # 2) Regex-based parser for [Title](URL) links in LLM text
 ############################################
 # ===== Desktop-only gate (robust) =====
+# ========= Desktop-only: detection + gating + debug =========
 def _detect_device(width_threshold: int = 900, *, force: bool = False) -> bool:
     """
-    返回是否为“mobile-like”。综合 UA、userAgentData、触摸能力与视口宽度。
-    - width_threshold: 低于该宽度判为移动/平板（可按需改 900/1000/1024）
+    采集多源信号并判定是否“mobile-like”，返回 True 表示应拦截。
+    - 兼容 st_javascript 返回 str 或 dict
+    - 兼容 UAData / UA 正则 / 触摸特征 / 视口宽度
     """
     if not force and "_device_info" in st.session_state and "_is_mobile_like" in st.session_state:
         return st.session_state["_is_mobile_like"]
@@ -248,15 +282,16 @@ def _detect_device(width_threshold: int = 900, *, force: bool = False) -> bool:
     (() => {
       const ua = navigator.userAgent || "";
       const uaData = navigator.userAgentData || null;
-      const mobileByUAData = !!(uaData && uaData.mobile);
+      const uaDataMobile = !!(uaData && uaData.mobile);
       const width  = Math.max(document.documentElement.clientWidth,  window.innerWidth  || 0);
       const height = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+      const dpr = window.devicePixelRatio || 1;
       const touchPoints = navigator.maxTouchPoints || 0;
-      const isTouch = ('ontouchstart' in window) || touchPoints > 1 || window.matchMedia('(pointer: coarse)').matches;
+      const isTouch = ('ontouchstart' in window) || touchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
       const isMobileUA = /Mobile|Android|iP(hone|od)|Phone/i.test(ua);
-      // iPadOS 会伪装成 Mac；结合触摸特征识别
-      const isTabletUA = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && (('ontouchstart' in window) || (touchPoints > 0)));
-      return JSON.stringify({ua, width, height, touchPoints, isTouch, isMobileUA, isTabletUA, mobileByUAData});
+      // iPadOS 以 Mac UA 出现：Mac + 触摸判为平板
+      const isTabletUA = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && (('ontouchstart' in window) || touchPoints > 0));
+      return JSON.stringify({ua, uaDataMobile, width, height, dpr, touchPoints, isTouch, isMobileUA, isTabletUA});
     })()
     """
     try:
@@ -273,42 +308,48 @@ def _detect_device(width_threshold: int = 900, *, force: bool = False) -> bool:
     elif isinstance(raw, dict):
         info = raw
 
-    # 如果拿不到浏览器信息，默认放行（避免误伤桌面端）
+    # 拿不到信息：默认放行但记录
     if not info:
-        st.session_state["_device_info"] = {"ua": "unknown", "width": None, "height": None}
+        st.session_state["_device_info"] = {"ua": "unknown", "width": None, "height": None, "reason": "no-js-return"}
         st.session_state["_is_mobile_like"] = False
         return False
 
+    # 计算判定理由（便于调试）
+    reasons = []
+    if info.get("uaDataMobile"):
+        reasons.append("userAgentData.mobile")
+    if info.get("isMobileUA"):
+        reasons.append("UA=mobile")
+    if info.get("isTabletUA"):
+        reasons.append("UA=tablet/iPad")
+    if info.get("isTouch") and (info.get("width", 9999) < 1024):
+        reasons.append("touch+width<1024")
+    if info.get("width", 9999) < width_threshold:
+        reasons.append(f"width<{width_threshold}")
+
+    mobile_like = len(reasons) > 0
+
+    info["reasons"] = reasons
     st.session_state["_device_info"] = info
-
-    # 规则：UA/UAData 标记为移动/平板，或 触摸+窄屏，或 屏宽低于阈值 → 视为移动/平板
-    mobile_like = bool(
-        info.get("mobileByUAData")
-        or info.get("isMobileUA")
-        or info.get("isTabletUA")
-        or (info.get("isTouch") and (info.get("width", 9999) < 1024))
-        or (info.get("width", 9999) < width_threshold)
-    )
-
     st.session_state["_is_mobile_like"] = mobile_like
     return mobile_like
 
 
 def gate_by_device(width_threshold: int = 900):
     """
-    在 main() 最顶部调用。若判定移动/平板，展示拦截页并 st.stop()。
+    在 main() 最顶部调用。若判定为移动/平板，展示拦截页并 st.stop()。
+    同时在页面上展示“设备信息”用于调试。
     """
     is_mobile_like = _detect_device(width_threshold=width_threshold)
 
     if is_mobile_like:
-        # 仅记录一次拦截
         if not st.session_state.get("_device_block_logged"):
             save_to_gsheet({
                 "id":        st.session_state.get("prolific_id", "unknown"),
                 "start":     st.session_state.get("start_time", datetime.now().isoformat()),
                 "timestamp": datetime.now().isoformat(),
                 "type":      "device_block",
-                "title":     json.dumps(st.session_state.get("_device_info", {})),
+                "title":     json.dumps(st.session_state.get("_device_info", {}), ensure_ascii=False),
                 "url":       " "
             })
             st.session_state["_device_block_logged"] = True
@@ -316,23 +357,39 @@ def gate_by_device(width_threshold: int = 900):
         st.title("Desktop/Laptop Required")
         st.error("For performance and consistency, this study must be completed on a **desktop or laptop**.")
 
-        colA, colB = st.columns([2, 1])
-        with colA:
-            st.markdown(
-                "- Please open this link on a computer (Chrome / Edge / Firefox / Safari).\n"
-                "- If you are on a phone/tablet, switch to a desktop/laptop and re-open the same link.\n"
-            )
-            if st.button("Re‑check (I'm on desktop now)"):
-                # 强制重新检测（例如用户换到电脑端后刷新）
+        # —— 可视化设备信息（调试用）——
+        info = st.session_state.get("_device_info", {})
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**User-Agent**")
+            st.code(info.get("ua", ""))
+            st.markdown("**Detection results**")
+            st.json({
+                "width": info.get("width"),
+                "height": info.get("height"),
+                "dpr": info.get("dpr"),
+                "touchPoints": info.get("touchPoints"),
+                "isTouch": info.get("isTouch"),
+                "uaDataMobile": info.get("uaDataMobile"),
+                "isMobileUA": info.get("isMobileUA"),
+                "isTabletUA": info.get("isTabletUA"),
+                "reasons": info.get("reasons", []),
+            })
+        with c2:
+            if st.button("Re‑check now"):
                 _detect_device(width_threshold=width_threshold, force=True)
                 st.rerun()
-        with colB:
-            # 你也可以注释掉这块 debug 信息
-            st.caption("Detected:")
-            st.write(st.session_state.get("_device_info", {}))
 
         st.stop()
 
+def device_debug_sidebar():
+    st.sidebar.markdown("### Device Debug")
+    info = st.session_state.get("_device_info", {})
+    st.sidebar.write("**Mobile-like?**", st.session_state.get("_is_mobile_like"))
+    st.sidebar.json(info)
+    if st.sidebar.button("Re‑detect"):
+        _detect_device(force=True)
+        st.rerun()
 
 
 def get_variant_flags():
@@ -2354,7 +2411,10 @@ def show_google_search(with_ads: bool):
 # Main App Flow
 ############################################
 def main():
-    gate_by_device()
+    inject_mobile_overlay_css(width_threshold=900)   # 可改 1000/1024
+
+    # 2) 服务端 gate（多信号判断 + 可视化调试）
+    gate_by_device(width_threshold=900)
     if st.session_state.stage == "pid":
         st.title("Welcome!")
         pid = st.text_input("Please enter your Prolific ID:")
