@@ -235,68 +235,104 @@ st.markdown(
 ############################################
 # 2) Regex-based parser for [Title](URL) links in LLM text
 ############################################
-def _detect_device():
+# ===== Desktop-only gate (robust) =====
+def _detect_device(width_threshold: int = 900, *, force: bool = False) -> bool:
     """
-    用 JS 读取 userAgent、屏幕宽度等，返回 dict 并写入 session_state。
-    规则（可调）：宽度 < 900 或 UA 含 mobile/tablet 视为 mobile/tablet。
+    返回是否为“mobile-like”。综合 UA、userAgentData、触摸能力与视口宽度。
+    - width_threshold: 低于该宽度判为移动/平板（可按需改 900/1000/1024）
     """
+    if not force and "_device_info" in st.session_state and "_is_mobile_like" in st.session_state:
+        return st.session_state["_is_mobile_like"]
+
     js = """
-    const ua = navigator.userAgent || "";
-    const width  = Math.max(document.documentElement.clientWidth,  window.innerWidth  || 0);
-    const height = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-    const isMobileUA = /Mobile|Android|iP(hone|od)|Phone/i.test(ua);
-    const isTabletUA = /iPad|Tablet/i.test(ua);
-    return {ua, width, height, isMobileUA, isTabletUA};
+    (() => {
+      const ua = navigator.userAgent || "";
+      const uaData = navigator.userAgentData || null;
+      const mobileByUAData = !!(uaData && uaData.mobile);
+      const width  = Math.max(document.documentElement.clientWidth,  window.innerWidth  || 0);
+      const height = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+      const touchPoints = navigator.maxTouchPoints || 0;
+      const isTouch = ('ontouchstart' in window) || touchPoints > 1 || window.matchMedia('(pointer: coarse)').matches;
+      const isMobileUA = /Mobile|Android|iP(hone|od)|Phone/i.test(ua);
+      // iPadOS 会伪装成 Mac；结合触摸特征识别
+      const isTabletUA = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && (('ontouchstart' in window) || (touchPoints > 0)));
+      return JSON.stringify({ua, width, height, touchPoints, isTouch, isMobileUA, isTabletUA, mobileByUAData});
+    })()
     """
     try:
-        info = st_javascript(js)
+        raw = st_javascript(js)
     except Exception:
-        info = None
+        raw = None
+
+    info = None
+    if isinstance(raw, str):
+        try:
+            info = json.loads(raw)
+        except Exception:
+            info = None
+    elif isinstance(raw, dict):
+        info = raw
+
+    # 如果拿不到浏览器信息，默认放行（避免误伤桌面端）
     if not info:
-        return
+        st.session_state["_device_info"] = {"ua": "unknown", "width": None, "height": None}
+        st.session_state["_is_mobile_like"] = False
+        return False
 
     st.session_state["_device_info"] = info
-    # 规则：宽度<900 或 UA 标记为移动/平板 → 视为非桌面
-    st.session_state["_is_mobile_like"] = bool(
-        info.get("isMobileUA") or info.get("isTabletUA") or (info.get("width", 1200) < 900)
+
+    # 规则：UA/UAData 标记为移动/平板，或 触摸+窄屏，或 屏宽低于阈值 → 视为移动/平板
+    mobile_like = bool(
+        info.get("mobileByUAData")
+        or info.get("isMobileUA")
+        or info.get("isTabletUA")
+        or (info.get("isTouch") and (info.get("width", 9999) < 1024))
+        or (info.get("width", 9999) < width_threshold)
     )
 
+    st.session_state["_is_mobile_like"] = mobile_like
+    return mobile_like
 
-def gate_by_device():
-    """
-    放在 main() 顶部调用。若判定为移动端，则展示拦截页并 st.stop()。
-    同时写日志到 Google Sheet。
-    """
-    if "_is_mobile_like" not in st.session_state:
-        _detect_device()
 
-    # 如果无法检测（极少数情况），默认放行；你也可以改为默认拦截
-    is_mobile_like = st.session_state.get("_is_mobile_like", False)
+def gate_by_device(width_threshold: int = 900):
+    """
+    在 main() 最顶部调用。若判定移动/平板，展示拦截页并 st.stop()。
+    """
+    is_mobile_like = _detect_device(width_threshold=width_threshold)
 
     if is_mobile_like:
-        # 记录 1 次拦截
-        save_to_gsheet({
-            "id":        st.session_state.get("prolific_id", "unknown"),
-            "start":     st.session_state.get("start_time", datetime.now().isoformat()),
-            "timestamp": datetime.now().isoformat(),
-            "type":      "device_block",
-            "title":     str(st.session_state.get("_device_info", {})),
-            "url":       " "
-        })
+        # 仅记录一次拦截
+        if not st.session_state.get("_device_block_logged"):
+            save_to_gsheet({
+                "id":        st.session_state.get("prolific_id", "unknown"),
+                "start":     st.session_state.get("start_time", datetime.now().isoformat()),
+                "timestamp": datetime.now().isoformat(),
+                "type":      "device_block",
+                "title":     json.dumps(st.session_state.get("_device_info", {})),
+                "url":       " "
+            })
+            st.session_state["_device_block_logged"] = True
 
         st.title("Desktop/Laptop Required")
         st.error("For performance and consistency, this study must be completed on a **desktop or laptop**.")
-        st.markdown(
-            "- Please open this link on a computer (Chrome/Edge/Firefox/Safari).\n"
-            "- If you are on iPad/phone, switch to a computer and re-open the same link.\n"
-        )
-        # 可选：给一个“复制链接”按钮
-        try:
-            st.link_button("Copy study link", "javascript:void(0)")
-            st.caption("Or simply bookmark this page and open it on your desktop.")
-        except Exception:
-            pass
+
+        colA, colB = st.columns([2, 1])
+        with colA:
+            st.markdown(
+                "- Please open this link on a computer (Chrome / Edge / Firefox / Safari).\n"
+                "- If you are on a phone/tablet, switch to a desktop/laptop and re-open the same link.\n"
+            )
+            if st.button("Re‑check (I'm on desktop now)"):
+                # 强制重新检测（例如用户换到电脑端后刷新）
+                _detect_device(width_threshold=width_threshold, force=True)
+                st.rerun()
+        with colB:
+            # 你也可以注释掉这块 debug 信息
+            st.caption("Detected:")
+            st.write(st.session_state.get("_device_info", {}))
+
         st.stop()
+
 
 
 def get_variant_flags():
