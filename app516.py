@@ -303,8 +303,8 @@ def enforce_desktop_only_frontend(*, strict_width: int | None = None,
     <div id="desktop_gate_overlay">
       <div class="box">
         <h1>Desktop/Laptop Required</h1>
-        <p>This study must be completed on a <b>desktop or laptop</b> for performance and consistency.</p>
-        <p>Please open this link on a computer (Chrome / Edge / Firefox / Safari).</p>
+        <p>Please use a <b>desktop or laptop</b> to access and complete this study.</p>
+        <p>Now please open this link on a computer (Chrome / Edge / Firefox / Safari) and kindly return the study. Thank you!</p>
         <p><small>If you believe this is an error, add <code>?{allow_param}=1</code> to the URL to temporarily bypass for debugging.</small></p>
       </div>
     </div>
