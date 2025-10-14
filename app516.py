@@ -252,7 +252,7 @@ def _js_eval(expr: str, key: str):
 def desktop_gate_via_js_eval(width_threshold: int = 900) -> tuple[bool, dict]:
     """
     Returns (block, info). Uses streamlit_js_eval to collect signals; no st_javascript needed.
-    We DO NOT block a clear desktop OS only because the window is narrow.
+    We DO NOT block a clear desktop OS only because the window is narrow. 
     """
     ua  = _js_eval("navigator.userAgent", "ua")
     w   = _js_eval("Math.max(document.documentElement.clientWidth, window.innerWidth || 0)", "w")
