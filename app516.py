@@ -237,6 +237,103 @@ st.markdown(
 # ===== Desktop-only gate (robust) =====
 # ========= Desktop-only: detection + gating + debug =========
 
+def enforce_desktop_only_frontend(*, strict_width: int | None = None,
+                                  allow_param: str = "force_desktop",
+                                  show_debug_probe: bool = False):
+    """
+    Blocks touch-first devices with a clean overlay (phones & tablets), without any JS bridge.
+    - Uses input-modality media queries: (hover: none) and (pointer: coarse)
+    - Also uses an iOS-only feature test to catch iPad that spoofs desktop UA
+    - strict_width: optional extra rule (e.g., 820) if you want to also block very narrow viewports
+    - allow_param: add ?force_desktop=1 to URL to bypass the overlay for debugging
+    - show_debug_probe: show a tiny inline probe (UA + media queries) for quick verification
+    """
+    # Optional bypass via query param (for your own debugging)
+    try:
+        q = st.query_params  # Streamlit >= 1.30
+    except Exception:
+        q = st.experimental_get_query_params()
+    bypass = False
+    try:
+        bypass = str(q.get(allow_param, ["0"])[0]) in ("1", "true", "True")
+    except Exception:
+        pass
+
+    extra_width_rule = ""
+    if strict_width:
+        # Adds an extra guard based on viewport width if you *want* it
+        extra_width_rule = f"""
+        @media (max-width: {strict_width}px) {{
+          #desktop_gate_overlay {{ display: flex !important; }}
+        }}
+        """
+
+    # Core overlay (white background, high contrast; pinned on top)
+    css = f"""
+    <style>
+    /* hidden by default; shown by modality queries below */
+    #desktop_gate_overlay {{
+      display: none;
+      position: fixed; inset: 0; z-index: 2147483647;
+      background: #fff; color: #111;
+      align-items: center; justify-content: center;
+      padding: 32px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }}
+    #desktop_gate_overlay .box {{ max-width: 760px; }}
+    #desktop_gate_overlay h1 {{ margin: 0 0 12px 0; font-size: 1.6rem; }}
+    #desktop_gate_overlay p  {{ margin: 0 0 8px 0; }}
+
+    /* Touch-first devices: phones & tablets */
+    @media (hover: none) and (pointer: coarse) {{
+      #desktop_gate_overlay {{ display: flex; }}
+    }}
+
+    /* iOS only (iPhone/iPad Safari): feature combo nearly unique to iOS */
+    @supports (-webkit-touch-callout: none) and (-webkit-overflow-scrolling: touch) {{
+      #desktop_gate_overlay {{ display: flex !important; }}
+    }}
+
+    /* Optional extra: also block very narrow viewports if you choose */
+    {extra_width_rule}
+
+    /* If URL has ?{allow_param}=1, force-hide the overlay */
+    {('#desktop_gate_overlay { display: none !important; }' if bypass else '')}
+    </style>
+    <div id="desktop_gate_overlay">
+      <div class="box">
+        <h1>Desktop/Laptop Required</h1>
+        <p>This study must be completed on a <b>desktop or laptop</b> for performance and consistency.</p>
+        <p>Please open this link on a computer (Chrome / Edge / Firefox / Safari).</p>
+        <p><small>If you believe this is an error, add <code>?{allow_param}=1</code> to the URL to temporarily bypass for debugging.</small></p>
+      </div>
+    </div>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+    # Optional visual probe (doesn't return to Python; just shows what the browser reports)
+    if show_debug_probe:
+        import streamlit.components.v1 as components
+        components.html("""
+        <div style="font-family:system-ui,Arial; padding:8px; border:1px solid #ddd; margin-top:8px;">
+          <div><b>UA</b>: <span id="ua"></span></div>
+          <div><b>(hover: none)</b>: <span id="hov"></span></div>
+          <div><b>(pointer: coarse)</b>: <span id="ptr"></span></div>
+          <div><b>(any-pointer: coarse)</b>: <span id="aptr"></span></div>
+          <div><b>iOS features</b>: <span id="ios"></span></div>
+          <script>
+            const mq = q => window.matchMedia ? window.matchMedia(q).matches : false;
+            document.getElementById("ua").textContent  = navigator.userAgent;
+            document.getElementById("hov").textContent = mq("(hover: none)");
+            document.getElementById("ptr").textContent = mq("(pointer: coarse)");
+            document.getElementById("aptr").textContent= mq("(any-pointer: coarse)");
+            const ios = CSS && CSS.supports && CSS.supports("-webkit-touch-callout: none") && CSS.supports("-webkit-overflow-scrolling: touch");
+            document.getElementById("ios").textContent = ios;
+          </script>
+        </div>
+        """, height=150)
+
+
 def _js_eval(expr: str, key: str):
     try:
         from streamlit_js_eval import streamlit_js_eval
@@ -2353,7 +2450,12 @@ def show_google_search(with_ads: bool):
 # Main App Flow
 ############################################
 def main():
-    gate_desktop_only(width_threshold=900)
+    enforce_desktop_only_frontend(strict_width=None)  # visual block, no logging
+    # Try JS-based detection for logging; won't block if bridge fails online
+    try:
+        gate_desktop_only(width_threshold=900)  # from previous message (js-eval version)
+    except Exception:
+        pass
     if st.session_state.stage == "pid":
         st.title("Welcome!")
         pid = st.text_input("Please enter your Prolific ID:")
