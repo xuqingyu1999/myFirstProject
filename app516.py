@@ -231,165 +231,107 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-def inject_mobile_overlay_css(width_threshold: int = 900):
-    st.markdown(f"""
-    <style>
-    #__mobile_block_overlay__ {{
-        display: none;
-    }}
-    @media (max-width: {width_threshold}px) {{
-        #__mobile_block_overlay__ {{
-            display: block;
-            position: fixed;
-            inset: 0;
-            background: #ffffff;
-            z-index: 10000;
-            padding: 28px;
-            overflow: auto;
-        }}
-        #__mobile_block_overlay__ h1 {{
-            margin-top: 0;
-            font-size: 1.5rem;
-        }}
-    }}
-    </style>
-    <div id="__mobile_block_overlay__">
-      <h1>Desktop/Laptop Required</h1>
-      <p>For performance and consistency, this study must be completed on a <b>desktop or laptop</b>.</p>
-      <ul>
-        <li>Please open this link on a computer (Chrome / Edge / Firefox / Safari).</li>
-        <li>If you are on a phone/tablet, switch to a desktop/laptop and re-open the same link.</li>
-      </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-
 ############################################
 # 2) Regex-based parser for [Title](URL) links in LLM text
 ############################################
 # ===== Desktop-only gate (robust) =====
 # ========= Desktop-only: detection + gating + debug =========
-def _detect_device(width_threshold: int = 900, *, force: bool = False) -> bool:
-    """
-    采集多源信号并判定是否“mobile-like”，返回 True 表示应拦截。
-    - 兼容 st_javascript 返回 str 或 dict
-    - 兼容 UAData / UA 正则 / 触摸特征 / 视口宽度
-    """
-    if not force and "_device_info" in st.session_state and "_is_mobile_like" in st.session_state:
-        return st.session_state["_is_mobile_like"]
 
-    js = """
-    (() => {
-      const ua = navigator.userAgent || "";
-      const uaData = navigator.userAgentData || null;
-      const uaDataMobile = !!(uaData && uaData.mobile);
-      const width  = Math.max(document.documentElement.clientWidth,  window.innerWidth  || 0);
-      const height = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-      const dpr = window.devicePixelRatio || 1;
-      const touchPoints = navigator.maxTouchPoints || 0;
-      const isTouch = ('ontouchstart' in window) || touchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
-      const isMobileUA = /Mobile|Android|iP(hone|od)|Phone/i.test(ua);
-      // iPadOS 以 Mac UA 出现：Mac + 触摸判为平板
-      const isTabletUA = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && (('ontouchstart' in window) || touchPoints > 0));
-      return JSON.stringify({ua, uaDataMobile, width, height, dpr, touchPoints, isTouch, isMobileUA, isTabletUA});
-    })()
-    """
+def _js_eval(expr: str, key: str):
     try:
-        raw = st_javascript(js)
+        from streamlit_js_eval import streamlit_js_eval
     except Exception:
-        raw = None
+        return None
+    try:
+        # streamlit_js_eval caches by key; use stable keys for each expr
+        return streamlit_js_eval(js_expressions=expr, key=key, timeout=0)
+    except Exception:
+        return None
 
-    info = None
-    if isinstance(raw, str):
-        try:
-            info = json.loads(raw)
-        except Exception:
-            info = None
-    elif isinstance(raw, dict):
-        info = raw
 
-    # 拿不到信息：默认放行但记录
-    if not info:
-        st.session_state["_device_info"] = {"ua": "unknown", "width": None, "height": None, "reason": "no-js-return"}
-        st.session_state["_is_mobile_like"] = False
-        return False
+def desktop_gate_via_js_eval(width_threshold: int = 900) -> tuple[bool, dict]:
+    """
+    Returns (block, info). Uses streamlit_js_eval to collect signals; no st_javascript needed.
+    We DO NOT block a clear desktop OS only because the window is narrow.
+    """
+    ua  = _js_eval("navigator.userAgent", "ua")
+    w   = _js_eval("Math.max(document.documentElement.clientWidth, window.innerWidth || 0)", "w")
+    tp  = _js_eval("navigator.maxTouchPoints || 0", "tp")
+    any_coarse = _js_eval("window.matchMedia ? window.matchMedia('(any-pointer: coarse)').matches : false", "any")
+    coarse     = _js_eval("window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false", "coarse")
+    hover_none = _js_eval("window.matchMedia ? window.matchMedia('(hover: none)').matches : false", "hovernone")
+    ua_mobile  = _js_eval("!!(navigator.userAgentData && navigator.userAgentData.mobile)", "uaDataMobile")
 
-    # 计算判定理由（便于调试）
+    info = {
+        "ua": ua, "width": w, "touchPoints": tp,
+        "anyCoarse": any_coarse, "pointerCoarse": coarse, "hoverNone": hover_none,
+        "uaDataMobile": ua_mobile
+    }
+
+    if ua is None:
+        # Bridge not available or blocked
+        info["reasons"] = ["no-js-eval"]
+        return (False, info)   # fall back to CSS method or let pass
+
+    # Regexes evaluated in Python
+    import re
+    is_mobile_ua = bool(re.search(r"Mobile|Android|iP(hone|od)|Phone", ua or "", re.I))
+    is_ipad_like = bool(re.search(r"iPad|Tablet", ua or "", re.I) or (re.search(r"Mac(Intel|intosh)", ua or "", re.I) and (tp or 0) > 0))
+    desktop_os   = bool(re.search(r"Windows NT|Macintosh|X11;|Linux x86_64|CrOS", ua or "", re.I))
+
     reasons = []
-    if info.get("uaDataMobile"):
-        reasons.append("userAgentData.mobile")
-    if info.get("isMobileUA"):
-        reasons.append("UA=mobile")
-    if info.get("isTabletUA"):
-        reasons.append("UA=tablet/iPad")
-    if info.get("isTouch") and (info.get("width", 9999) < 1024):
-        reasons.append("touch+width<1024")
-    if info.get("width", 9999) < width_threshold:
-        reasons.append(f"width<{width_threshold}")
+    if ua_mobile:  reasons.append("userAgentData.mobile")
+    if is_mobile_ua: reasons.append("UA=mobile")
+    if is_ipad_like: reasons.append("UA=tablet/iPad")
+    if (not desktop_os) and (bool(any_coarse) or bool(hover_none) or bool(coarse)) and (w is not None and int(w) < width_threshold):
+        reasons.append("touch+narrow")
 
-    mobile_like = len(reasons) > 0
+    block = len(reasons) > 0
+    info.update({
+        "desktopOS": desktop_os,
+        "isMobileUA": is_mobile_ua,
+        "isIPadLike": is_ipad_like,
+        "reasons": reasons,
+        "provider": "streamlit_js_eval"
+    })
+    return (block, info)
 
-    info["reasons"] = reasons
+def gate_desktop_only(width_threshold: int = 900):
+    # Try JS-eval bridge first
+    block, info = desktop_gate_via_js_eval(width_threshold=width_threshold)
     st.session_state["_device_info"] = info
-    st.session_state["_is_mobile_like"] = mobile_like
-    return mobile_like
+    st.session_state["_is_mobile_like"] = block
 
-
-def gate_by_device(width_threshold: int = 900):
-    """
-    在 main() 最顶部调用。若判定为移动/平板，展示拦截页并 st.stop()。
-    同时在页面上展示“设备信息”用于调试。
-    """
-    is_mobile_like = _detect_device(width_threshold=width_threshold)
-
-    if is_mobile_like:
+    if block:
+        # Log once
         if not st.session_state.get("_device_block_logged"):
             save_to_gsheet({
                 "id":        st.session_state.get("prolific_id", "unknown"),
                 "start":     st.session_state.get("start_time", datetime.now().isoformat()),
                 "timestamp": datetime.now().isoformat(),
                 "type":      "device_block",
-                "title":     json.dumps(st.session_state.get("_device_info", {}), ensure_ascii=False),
+                "title":     json.dumps(info, ensure_ascii=False),
                 "url":       " "
             })
             st.session_state["_device_block_logged"] = True
 
         st.title("Desktop/Laptop Required")
         st.error("For performance and consistency, this study must be completed on a **desktop or laptop**.")
-
-        # —— 可视化设备信息（调试用）——
-        info = st.session_state.get("_device_info", {})
-        c1, c2 = st.columns(2)
+        c1, c2 = st.columns([2, 1])
         with c1:
-            st.markdown("**User-Agent**")
-            st.code(info.get("ua", ""))
-            st.markdown("**Detection results**")
-            st.json({
-                "width": info.get("width"),
-                "height": info.get("height"),
-                "dpr": info.get("dpr"),
-                "touchPoints": info.get("touchPoints"),
-                "isTouch": info.get("isTouch"),
-                "uaDataMobile": info.get("uaDataMobile"),
-                "isMobileUA": info.get("isMobileUA"),
-                "isTabletUA": info.get("isTabletUA"),
-                "reasons": info.get("reasons", []),
-            })
-        with c2:
-            if st.button("Re‑check now"):
-                _detect_device(width_threshold=width_threshold, force=True)
+            st.markdown(
+                "- Please open this link on a computer (Chrome / Edge / Firefox / Safari).\n"
+                "- If you are on a phone/tablet, switch to a computer and re-open the same link.\n"
+            )
+            if st.button("Re-check"):
+                # refresh the values
+                st.session_state.pop("_device_info", None)
+                st.session_state.pop("_is_mobile_like", None)
                 st.rerun()
-
+        with c2:
+            st.caption("**Detected info (debug)**")
+            st.json(info)
         st.stop()
-
-def device_debug_sidebar():
-    st.sidebar.markdown("### Device Debug")
-    info = st.session_state.get("_device_info", {})
-    st.sidebar.write("**Mobile-like?**", st.session_state.get("_is_mobile_like"))
-    st.sidebar.json(info)
-    if st.sidebar.button("Re‑detect"):
-        _detect_device(force=True)
-        st.rerun()
 
 
 def get_variant_flags():
@@ -2411,10 +2353,7 @@ def show_google_search(with_ads: bool):
 # Main App Flow
 ############################################
 def main():
-    inject_mobile_overlay_css(width_threshold=900)   # 可改 1000/1024
-
-    # 2) 服务端 gate（多信号判断 + 可视化调试）
-    gate_by_device(width_threshold=900)
+    gate_desktop_only(width_threshold=900)
     if st.session_state.stage == "pid":
         st.title("Welcome!")
         pid = st.text_input("Please enter your Prolific ID:")
