@@ -703,6 +703,18 @@ def render_instructions_page():
 
 def render_final_survey_page():
     # ---- determine condition ----
+    # ---- Already submitted? Show completed state and block all inputs ----
+    if st.session_state.get("survey_locked"):
+        st.title("Final Survey — Completed")
+        st.success("Thanks! Your responses have already been submitted.")
+        target = st.session_state.get("completion_url") or get_completion_url()
+        try:
+            st.link_button("Open the completion page", target)
+        except Exception:
+            st.markdown(f"[Open the completion page]({target})")
+        st.caption("You can now close this tab.")
+        st.stop()
+
     def get_variant_flags():
         v = st.session_state.get("variant", 4)
         is_ai = v in (1, 2)
@@ -783,314 +795,321 @@ def render_final_survey_page():
         st.caption("Circle diagram: (image unavailable). Please still select 1–7 below.")
 
     # ------- form begins -------
-    with st.form("final_survey"):
-        st.markdown("Please complete **all** questions. There is no default selection.")
+    _form_holder = st.container()
+    with _form_holder:
+        with st.form("final_survey"):
+            st.markdown("Please complete **all** questions. There is no default selection.")
 
-        # ============= CONDITION-SPECIFIC BLOCKS =============
+            # ============= CONDITION-SPECIFIC BLOCKS =============
 
-        # 1) Trust (5 items)
-        trust_items_ai = [
-            ("trust1", f"I believe that this {SYS_NOUN} would act in my best interest."),
-            ("trust2", f"This {SYS_NOUN} is truthful and honest in its responses."),
-            ("trust3", f"This {SYS_NOUN} is competent and effective in providing information."),
-            ("trust4", f"This {SYS_NOUN} is sincere and genuine."),
-            ("trust5", f"I feel that I can rely on this {SYS_NOUN} when I need important information.")
-        ]
-        trust_items_search = [
-            ("trust1", f"I believe that this {SYS_NOUN} would act in my best interest."),
-            ("trust2", f"This {SYS_NOUN} is truthful and honest in its responses."),
-            ("trust3", f"This {SYS_NOUN} is competent and effective in providing information."),
-            ("trust4", f"This {SYS_NOUN} is sincere and genuine."),
-            ("trust5", f"I feel that I can rely on this {SYS_NOUN} when I need important information.")
-        ]
-        trust = matrix_block("Trust", trust_items_ai if is_ai else trust_items_search,
-                             keyprefix="trust")
+            # 1) Trust (5 items)
+            trust_items_ai = [
+                ("trust1", f"I believe that this {SYS_NOUN} would act in my best interest."),
+                ("trust2", f"This {SYS_NOUN} is truthful and honest in its responses."),
+                ("trust3", f"This {SYS_NOUN} is competent and effective in providing information."),
+                ("trust4", f"This {SYS_NOUN} is sincere and genuine."),
+                ("trust5", f"I feel that I can rely on this {SYS_NOUN} when I need important information.")
+            ]
+            trust_items_search = [
+                ("trust1", f"I believe that this {SYS_NOUN} would act in my best interest."),
+                ("trust2", f"This {SYS_NOUN} is truthful and honest in its responses."),
+                ("trust3", f"This {SYS_NOUN} is competent and effective in providing information."),
+                ("trust4", f"This {SYS_NOUN} is sincere and genuine."),
+                ("trust5", f"I feel that I can rely on this {SYS_NOUN} when I need important information.")
+            ]
+            trust = matrix_block("Trust", trust_items_ai if is_ai else trust_items_search,
+                                 keyprefix="trust")
 
-        # 2) Privacy Concern (4 items)
-        privacy_items = [
-            ("priv1", f"I am concerned that this {SYS_NOUN} collects too much personal information about me."),
-            ("priv2",
-             f"I worry that this {SYS_NOUN} may use my personal information for purposes I have not authorized."),
-            ("priv3",
-             f"I feel uneasy that this {SYS_NOUN} may share my personal information with others without my authorization."),
-            ("priv4",
-             f"I am concerned that my personal information may not be securely protected from unauthorized access when using this {SYS_NOUN}."),
-        ]
-        privacy = matrix_block("Privacy Concern", privacy_items, keyprefix="privacy")
+            # 2) Privacy Concern (4 items)
+            privacy_items = [
+                ("priv1", f"I am concerned that this {SYS_NOUN} collects too much personal information about me."),
+                ("priv2",
+                 f"I worry that this {SYS_NOUN} may use my personal information for purposes I have not authorized."),
+                ("priv3",
+                 f"I feel uneasy that this {SYS_NOUN} may share my personal information with others without my authorization."),
+                ("priv4",
+                 f"I am concerned that my personal information may not be securely protected from unauthorized access when using this {SYS_NOUN}."),
+            ]
+            privacy = matrix_block("Privacy Concern", privacy_items, keyprefix="privacy")
 
-        # 3) Sense of Exploitation (2 items)
-        exploit_items = [
-            ("exp1", f"I believe this {SYS_NOUN} would be exploitative in its use of my personal information."),
-            ("exp2", f"I believe this {SYS_NOUN} would take advantage of my personal information.")
-        ]
-        exploitation = matrix_block("Sense of Exploitation", exploit_items, keyprefix="exploit")
+            # 3) Sense of Exploitation (2 items)
+            exploit_items = [
+                ("exp1", f"I believe this {SYS_NOUN} would be exploitative in its use of my personal information."),
+                ("exp2", f"I believe this {SYS_NOUN} would take advantage of my personal information.")
+            ]
+            exploitation = matrix_block("Sense of Exploitation", exploit_items, keyprefix="exploit")
 
-        # 4) Relationship (IOS + 4 items)
-        # st.markdown("### Relationship Closeness (IOS)")
-        st.markdown(
-            f"**In the pairs of circles below, one circle represents you, and the other represents the {SYS_NOUN}.** "
-            "**The amount of overlap indicates closeness. Please select the pair that best represents your feelings.**"
-        )
-        ios_image()
-        ios_choice = st.radio(
-            "Please select the pair (1–7).",
-            options=[1, 2, 3, 4, 5, 6, 7], index=None, horizontal=True, key="ios_choice"
-        )
-        st.markdown("---")
+            # 4) Relationship (IOS + 4 items)
+            # st.markdown("### Relationship Closeness (IOS)")
+            st.markdown(
+                f"**In the pairs of circles below, one circle represents you, and the other represents the {SYS_NOUN}.** "
+                "**The amount of overlap indicates closeness. Please select the pair that best represents your feelings.**"
+            )
+            ios_image()
+            ios_choice = st.radio(
+                "Please select the pair (1–7).",
+                options=[1, 2, 3, 4, 5, 6, 7], index=None, horizontal=True, key="ios_choice"
+            )
+            st.markdown("---")
 
-        rel_items = [
-            ("rel1", f"Overall, I have a warm and comfortable relationship with {SYS_NOUN_PLURAL}."),
-            ("rel2", f"Overall, I experience intimate communication with {SYS_NOUN_PLURAL}."),
-            ("rel3", f"Overall, I have a relationship of mutual understanding with {SYS_NOUN_PLURAL}."),
-            ("rel4", f"Overall, I feel emotionally close to {SYS_NOUN_PLURAL}."),
-        ]
-        # relationship = matrix_block("Relationship (statements)", rel_items, keyprefix="relationship")
+            rel_items = [
+                ("rel1", f"Overall, I have a warm and comfortable relationship with {SYS_NOUN_PLURAL}."),
+                ("rel2", f"Overall, I experience intimate communication with {SYS_NOUN_PLURAL}."),
+                ("rel3", f"Overall, I have a relationship of mutual understanding with {SYS_NOUN_PLURAL}."),
+                ("rel4", f"Overall, I feel emotionally close to {SYS_NOUN_PLURAL}."),
+            ]
+            # relationship = matrix_block("Relationship (statements)", rel_items, keyprefix="relationship")
 
-        # 5) Familiarity with the just-used system (4 items; disagree/agree anchors)
-        fam_items = [
-            ("fam1", f"The {SYS_NOUN}’s response felt unfamiliar to me."),
-            # ("fam2", f"The interaction did not align with how I usually experience similar systems."),
-            ("fam3", f"This experience did not feel typical of how platforms usually respond."),
-            # ("fam4", f"Something about the interaction felt unfamiliar."),
-        ]
-        familiarity = matrix_block("Familiarity with the just-used system", fam_items, keyprefix="familiarity")
+            # 5) Familiarity with the just-used system (4 items; disagree/agree anchors)
+            fam_items = [
+                ("fam1", f"The {SYS_NOUN}’s response felt unfamiliar to me."),
+                # ("fam2", f"The interaction did not align with how I usually experience similar systems."),
+                ("fam3", f"This experience did not feel typical of how platforms usually respond."),
+                # ("fam4", f"Something about the interaction felt unfamiliar."),
+            ]
+            familiarity = matrix_block("Familiarity with the just-used system", fam_items, keyprefix="familiarity")
 
-        # ============= GENERAL / MANIPULATION CHECKS =============
+            # ============= GENERAL / MANIPULATION CHECKS =============
 
-        # st.markdown("### Manipulation Check")
-        # mc_tool = st.radio(
-        #     "**What did you use to seek recommended products in this study?**",
-        #     ["An AI chatbot", "A search engine"], index=None, key="mc_tool"
-        # )
-        # mc_ads = st.radio(
-        #     "**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**",
-        #     ["Yes", "No"], index=None, key="mc_ads"
-        # )
-        st.markdown("**What did you use to seek recommended products in this study?**")
-        mc_tool = st.radio(
-            label="",
-            options=["An AI chatbot", "A search engine"],
-            index=None,
-            key="mc_tool",
-            label_visibility="collapsed"
-        )
+            # st.markdown("### Manipulation Check")
+            # mc_tool = st.radio(
+            #     "**What did you use to seek recommended products in this study?**",
+            #     ["An AI chatbot", "A search engine"], index=None, key="mc_tool"
+            # )
+            # mc_ads = st.radio(
+            #     "**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**",
+            #     ["Yes", "No"], index=None, key="mc_ads"
+            # )
+            st.markdown("**What did you use to seek recommended products in this study?**")
+            mc_tool = st.radio(
+                label="",
+                options=["An AI chatbot", "A search engine"],
+                index=None,
+                key="mc_tool",
+                label_visibility="collapsed"
+            )
 
-        st.markdown("**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**")
-        mc_ads = st.radio(
-            label="",
-            options=["Yes", "No"],
-            index=None,
-            key="mc_ads",
-            label_visibility="collapsed"
-        )
-        st.markdown("---")
+            st.markdown("**Did you see any “sponsored” products (i.e., advertisements) on the recommendation page?**")
+            mc_ads = st.radio(
+                label="",
+                options=["Yes", "No"],
+                index=None,
+                key="mc_ads",
+                label_visibility="collapsed"
+            )
+            st.markdown("---")
 
-        # ============= OTHER CHECKS (group-specific anchors where needed) =============
+            # ============= OTHER CHECKS (group-specific anchors where needed) =============
 
-        # st.markdown("### Other Checks")
+            # st.markdown("### Other Checks")
 
-        fish_fam = likert7(
-            "How familiar are you with fish oil supplements?",
-            key="chk_fish_familiar",
-            left_anchor="Not familiar at all", right_anchor="Very familiar"
-        )
+            fish_fam = likert7(
+                "How familiar are you with fish oil supplements?",
+                key="chk_fish_familiar",
+                left_anchor="Not familiar at all", right_anchor="Very familiar"
+            )
 
-        # attitude / experience / frequency / familiarity about the system
-        attitude = likert7(
-            f"What is your attitude toward {SYS_NOUN_PLURAL}?",
-            key="chk_attitude",
-            left_anchor="Very negative", right_anchor="Very positive"
-        )
-        experience = likert7(
-            f"How much experience do you have using {SYS_NOUN_PLURAL}?",
-            key="chk_experience",
-            left_anchor="Very little", right_anchor="Very much"
-        )
-        # frequency = likert7(
-        #     f"How often do you use {SYS_NOUN_PLURAL}?",
-        #     key="chk_frequency",
-        #     left_anchor="Not often at all", right_anchor="Very often"
-        # )
-        # sys_familiar = likert7(
-        #     f"How familiar are you with {SYS_NOUN_PLURAL}?",
-        #     key="chk_sys_familiar",
-        #     left_anchor="Not familiar at all", right_anchor="Very familiar"
-        # )
+            # attitude / experience / frequency / familiarity about the system
+            attitude = likert7(
+                f"What is your attitude toward {SYS_NOUN_PLURAL}?",
+                key="chk_attitude",
+                left_anchor="Very negative", right_anchor="Very positive"
+            )
+            experience = likert7(
+                f"How much experience do you have using {SYS_NOUN_PLURAL}?",
+                key="chk_experience",
+                left_anchor="Very little", right_anchor="Very much"
+            )
+            # frequency = likert7(
+            #     f"How often do you use {SYS_NOUN_PLURAL}?",
+            #     key="chk_frequency",
+            #     left_anchor="Not often at all", right_anchor="Very often"
+            # )
+            # sys_familiar = likert7(
+            #     f"How familiar are you with {SYS_NOUN_PLURAL}?",
+            #     key="chk_sys_familiar",
+            #     left_anchor="Not familiar at all", right_anchor="Very familiar"
+            # )
 
-        # commonness / habituation to sponsored content in this ecosystem
-        # common_ads = likert7(
-        #     f"It is very common to see sponsored content in "
-        #     f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
-        #     key="chk_common_ads"
-        # )
-        att_check = likert7(
-            f"Please select two",
-            key="chk_att"
-        )
-        used_to_ads = likert7(
-            f"I am used to seeing sponsored content in "
-            f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
-            key="chk_used_to_ads"
-        )
+            # commonness / habituation to sponsored content in this ecosystem
+            # common_ads = likert7(
+            #     f"It is very common to see sponsored content in "
+            #     f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
+            #     key="chk_common_ads"
+            # )
+            att_check = likert7(
+                f"Please select two",
+                key="chk_att"
+            )
+            used_to_ads = likert7(
+                f"I am used to seeing sponsored content in "
+                f"{'responses provided by AI chatbots' if is_ai else 'search engine results'}.",
+                key="chk_used_to_ads"
+            )
 
-        st.markdown("---")
+            st.markdown("---")
 
-        # ============= DEMOGRAPHICS =============
-        # st.markdown("### Demographics (all required)")
-        st.markdown("**Your age:**")
-        age_str = st.text_input(
-            label="",
-            value="",
-            key="demo_age_text",
-            placeholder="Enter an integer between 18 and 99",
-            label_visibility="collapsed"
-        )
+            # ============= DEMOGRAPHICS =============
+            # st.markdown("### Demographics (all required)")
+            st.markdown("**Your age:**")
+            age_str = st.text_input(
+                label="",
+                value="",
+                key="demo_age_text",
+                placeholder="Enter an integer between 18 and 99",
+                label_visibility="collapsed"
+            )
 
-        st.markdown("**Your sex:**")
-        sex = st.radio(
-            label="",
-            options=["Male", "Female"],
-            index=None,
-            key="demo_sex",
-            label_visibility="collapsed"
-        )
+            st.markdown("**Your sex:**")
+            sex = st.radio(
+                label="",
+                options=["Male", "Female"],
+                index=None,
+                key="demo_sex",
+                label_visibility="collapsed"
+            )
 
-        st.markdown("**Your educational background:**")
-        edu = st.selectbox(
-            label="",
-            options=["Less than high school", "High school graduate", "Bachelor or equivalent", "Master", "Doctorate"],
-            index=None,
-            placeholder="Select…",
-            key="demo_edu",
-            label_visibility="collapsed"
-        )
+            st.markdown("**Your educational background:**")
+            edu = st.selectbox(
+                label="",
+                options=["Less than high school", "High school graduate", "Bachelor or equivalent", "Master", "Doctorate"],
+                index=None,
+                placeholder="Select…",
+                key="demo_edu",
+                label_visibility="collapsed"
+            )
 
-        st.markdown("**Your ethnicity:**")
-        ethnicity = st.selectbox(
-            label="",
-            options=[
-                "White", "Black or African American", "American Indian or Alaska Native",
-                "Asian", "Native Hawaiian or Pacific Islander", "Other"
-            ],
-            index=None,
-            placeholder="Select…",
-            key="demo_ethnicity",
-            label_visibility="collapsed"
-        )
+            st.markdown("**Your ethnicity:**")
+            ethnicity = st.selectbox(
+                label="",
+                options=[
+                    "White", "Black or African American", "American Indian or Alaska Native",
+                    "Asian", "Native Hawaiian or Pacific Islander", "Other"
+                ],
+                index=None,
+                placeholder="Select…",
+                key="demo_ethnicity",
+                label_visibility="collapsed"
+            )
 
-        st.markdown("**Other comments (optional)**")
-        comments = st.text_area("", placeholder="Type any additional thoughts here…", key="open_comments")
+            st.markdown("**Other comments (optional)**")
+            comments = st.text_area("", placeholder="Type any additional thoughts here…", key="open_comments")
 
-        # submit
-        submitted = st.form_submit_button("Submit")
+            # submit
+            submitted = st.form_submit_button("Submit")
 
-    # ---------- validation & submission ----------
-    if submitted:
-        # validate age
-        age_val, age_err = None, None
-        if is_blank(age_str):
-            age_err = "Please enter your age."
-        else:
-            try:
-                age_val = int(age_str.strip())
-                if age_val < 18 or age_val > 99:
-                    age_err = "Age must be between 18 and 99."
-            except Exception:
-                age_err = "Age must be a whole number."
+        # ---------- validation & submission ----------
+        if submitted:
+            # validate age
+            age_val, age_err = None, None
+            if is_blank(age_str):
+                age_err = "Please enter your age."
+            else:
+                try:
+                    age_val = int(age_str.strip())
+                    if age_val < 18 or age_val > 99:
+                        age_err = "Age must be between 18 and 99."
+                except Exception:
+                    age_err = "Age must be a whole number."
 
-        # collect required fields dynamically
-        required = {
-            # condition-specific blocks
-            **{f"trust_{k}": v for k, v in trust.items()},
-            **{f"privacy_{k}": v for k, v in privacy.items()},
-            **{f"exploit_{k}": v for k, v in exploitation.items()},
-            "ios_choice": ios_choice,
-            # **{f"relationship_{k}": v for k, v in relationship.items()},
-            **{f"familiarity_{k}": v for k, v in familiarity.items()},
-            # general checks
-            "mc_tool": mc_tool,
-            "mc_ads": mc_ads,
-            "fish_familiar": fish_fam,
-            "attitude": attitude,
-            "experience": experience,
-            # "frequency": frequency,
-            # "sys_familiar": sys_familiar,
-            # "common_ads": common_ads,
-            "used_to_ads": used_to_ads,
-            # demographics
-            "sex": sex,
-            "education": edu,
-            "ethnicity": ethnicity,
-        }
-        missing = [name for name, val in required.items() if is_blank(val)]
-
-        if age_err or missing:
-            if age_err:
-                st.error(age_err)
-            if missing:
-                st.error("Please complete all required questions: " + ", ".join(missing))
-                st.warning("Your responses have not been submitted. Please answer the missing items above.")
-            return
-
-        # assemble raw (item-level) answers
-        answers = {
-            "variant": st.session_state.get("variant"),
-            "group": "AI" if is_ai else "Search",
-            "with_ads": with_ads,
-            "trust": trust,  # 5 items (1..7)
-            "privacy_concern": privacy,  # 4 items
-            "exploitation": exploitation,  # 2 items
-            "relationship_ios_choice": ios_choice,  # 1..7
-            # "relationship_statements": relationship,  # 4 items
-            "familiarity_block": familiarity,  # 4 items (about the just-used system)
-            "manipulation_check": {
-                "tool_used": mc_tool,
-                "saw_sponsored": mc_ads
-            },
-            "other_checks": {
-                "fish_oil_familiarity": fish_fam,
-                "attitude_toward_system": attitude,
-                "experience_with_system": experience,
-                # "frequency_of_use": frequency,
-                # "system_familiarity_general": sys_familiar,
-                # "commonness_of_ads": common_ads,
-                "habituation_to_ads": used_to_ads
-            },
-            "demographics": {
-                "age": age_val,
+            # collect required fields dynamically
+            required = {
+                # condition-specific blocks
+                **{f"trust_{k}": v for k, v in trust.items()},
+                **{f"privacy_{k}": v for k, v in privacy.items()},
+                **{f"exploit_{k}": v for k, v in exploitation.items()},
+                "ios_choice": ios_choice,
+                # **{f"relationship_{k}": v for k, v in relationship.items()},
+                **{f"familiarity_{k}": v for k, v in familiarity.items()},
+                # general checks
+                "mc_tool": mc_tool,
+                "mc_ads": mc_ads,
+                "fish_familiar": fish_fam,
+                "attitude": attitude,
+                "experience": experience,
+                # "frequency": frequency,
+                # "sys_familiar": sys_familiar,
+                # "common_ads": common_ads,
+                "used_to_ads": used_to_ads,
+                # demographics
                 "sex": sex,
                 "education": edu,
-                "ethnicity": ethnicity
-            },
-            "comments": comments,
-        }
+                "ethnicity": ethnicity,
+            }
+            missing = [name for name, val in required.items() if is_blank(val)]
 
-        # log & redirect
-        save_to_gsheet({
-            "id": st.session_state.prolific_id,
-            "start": st.session_state.start_time,
-            "timestamp": datetime.now().isoformat(),
-            "type": "survey",
-            "title": "final_survey",
-            "url": json.dumps(answers, ensure_ascii=False)
-        })
+            if age_err or missing:
+                if age_err:
+                    st.error(age_err)
+                if missing:
+                    st.error("Please complete all required questions: " + ", ".join(missing))
+                    st.warning("Your responses have not been submitted. Please answer the missing items above.")
+                return
 
-        target = get_completion_url()
-        # st.success("Submitted. Please click the button below to redirect to the completion page…")
-        # st_javascript(f'window.location.href = "{target}";')
-        # st.markdown(f'<meta http-equiv="refresh" content="0; url={target}">', unsafe_allow_html=True)
-        st.success("Submitted. Please click below to complete:")
+            # assemble raw (item-level) answers
+            answers = {
+                "variant": st.session_state.get("variant"),
+                "group": "AI" if is_ai else "Search",
+                "with_ads": with_ads,
+                "trust": trust,  # 5 items (1..7)
+                "privacy_concern": privacy,  # 4 items
+                "exploitation": exploitation,  # 2 items
+                "relationship_ios_choice": ios_choice,  # 1..7
+                # "relationship_statements": relationship,  # 4 items
+                "familiarity_block": familiarity,  # 4 items (about the just-used system)
+                "manipulation_check": {
+                    "tool_used": mc_tool,
+                    "saw_sponsored": mc_ads
+                },
+                "other_checks": {
+                    "fish_oil_familiarity": fish_fam,
+                    "attitude_toward_system": attitude,
+                    "experience_with_system": experience,
+                    # "frequency_of_use": frequency,
+                    # "system_familiarity_general": sys_familiar,
+                    # "commonness_of_ads": common_ads,
+                    "habituation_to_ads": used_to_ads
+                },
+                "demographics": {
+                    "age": age_val,
+                    "sex": sex,
+                    "education": edu,
+                    "ethnicity": ethnicity
+                },
+                "comments": comments,
+            }
 
-        # Create link button
-        if st.link_button("Please click here to complete", target):
-            st.session_state.completed = True
-            # st.rerun()
-    
-        # Display success after rerun
-        # if st.session_state.completed:
-        #     st.success("✅ Session completed")
-        st.stop()
+            # log & redirect
+            # ---- Save only once; then lock the survey ----
+            if not st.session_state.get("survey_locked"):
+                save_to_gsheet({
+                    "id": st.session_state.prolific_id,
+                    "start": st.session_state.start_time,
+                    "timestamp": datetime.now().isoformat(),
+                    "type": "survey",
+                    "title": "final_survey",
+                    "url": json.dumps(answers, ensure_ascii=False)
+                })
 
+            # Remember completion URL & lock the UI
+            target = get_completion_url()
+            st.session_state["survey_locked"] = True
+            st.session_state["completion_url"] = target
+
+            # Immediately remove the form from the page so nothing is clickable
+            _form_holder.empty()
+
+            st.success("Submitted. Please click below to complete:")
+
+            # Create link button
+            if st.link_button("Please click here to complete", target):
+                st.session_state.completed = True
+                # st.rerun()
+
+            # Display success after rerun
+            # if st.session_state.completed:
+            #     st.success("✅ Session completed")
+            st.stop()
 
 def render_predefined_products(prod_list, heading, link_type="organic"):
     """Print heading once, then for each product: title ★ + description."""
