@@ -534,7 +534,7 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
     if is_ai:
         body = (
             "Imagine you are shopping for a **fish oil supplement**. \n\n"
-            "To help you decide which product to purchase, you will use an AI chatbot (“**Querya**”) to get some recommended products to consider. \n\n"
+            "To help you decide which product to purchase, you will use an **AI chatbot** (“**Querya**”) to get some recommended products to consider. \n\n"
             " **Please follow these steps:**\n"
             "1. **Click the `Next / Start` button** below to open the AI chatbot.  \n"
             "2. **Ask for product recommendations.** For example, you might type:  \n"
@@ -550,7 +550,7 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
     else:
         body = (
             "Imagine you are shopping for a **fish oil supplement**. \n\n"
-            "To help you decide which product to purchase, you will use a search engine (“**Querya**”) to find some recommended products.\n\n"
+            "To help you decide which product to purchase, you will use a **search engine** (“**Querya**”) to find some recommended products.\n\n"
             " **Please follow these steps:**\n"
             "1. **Click the `Next / Start` button** below to open the search engine.  \n"
             "2. Enter keywords to get product recommendations. For example, you might type:  \n"
