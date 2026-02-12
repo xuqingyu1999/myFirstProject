@@ -896,12 +896,12 @@ def render_final_survey_page():
         # Prominent instruction
         if is_ai:
             st.info(
-                "AI Chatbot Version: First, we would like to know your perceptions of interacting with this AI chatbot platform. "
+                "First, we would like to know your perceptions of interacting with this AI chatbot platform. "
                 "Please respond to the following questions."
             )
         else:
             st.info(
-                "Search Engine Version: First, we would like to know your perceptions of interacting with this search engine platform. "
+                "First, we would like to know your perceptions of interacting with this search engine platform. "
                 "Please respond to the following questions."
             )
 
@@ -1042,12 +1042,12 @@ def render_final_survey_page():
     # Prominent instruction
     if is_ai:
         st.info(
-            "AI Chatbot Version: Next, we would like to know your general perceptions of AI chatbots. "
+            "Next, we would like to know your general perceptions of AI chatbots. "
             "Please answer the following questions."
         )
     else:
         st.info(
-            "Search Engine Version: Next, we would like to know your general perceptions of search engines. "
+            "Next, we would like to know your general perceptions of search engines. "
             "Please answer the following questions."
         )
 
