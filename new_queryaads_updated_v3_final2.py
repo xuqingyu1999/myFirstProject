@@ -46,7 +46,6 @@ def get_credentials_from_secrets():
     # 还原成 dict
     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-    
 
     return creds_dict
 
@@ -534,7 +533,7 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
     if is_ai:
         body = (
             "Imagine you are shopping for a **fish oil supplement**. \n\n"
-            "To help you decide which product to purchase, you will use an **AI chatbot** (“**Querya**”) to get some recommended products to consider. \n\n"
+            "To help you decide which product to purchase, you will use an AI chatbot (“**Querya**”) to get some recommended products to consider. \n\n"
             " **Please follow these steps:**\n"
             "1. **Click the `Next / Start` button** below to open the AI chatbot.  \n"
             "2. **Ask for product recommendations.** For example, you might type:  \n"
@@ -550,7 +549,7 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
     else:
         body = (
             "Imagine you are shopping for a **fish oil supplement**. \n\n"
-            "To help you decide which product to purchase, you will use a **search engine** (“**Querya**”) to find some recommended products.\n\n"
+            "To help you decide which product to purchase, you will use a search engine (“**Querya**”) to find some recommended products.\n\n"
             " **Please follow these steps:**\n"
             "1. **Click the `Next / Start` button** below to open the search engine.  \n"
             "2. Enter keywords to get product recommendations. For example, you might type:  \n"
@@ -1371,7 +1370,6 @@ def render_final_survey_page():
 
             st.stop()
 
-
 def render_predefined_products(prod_list, heading, link_type="organic"):
     """Print heading once, then for each product: title ★ + description."""
     st.markdown(heading)
@@ -1954,182 +1952,10 @@ def get_products_by_query(query: str):
         return []
 
 
-############################################
-# Step 2: random "variant"
-############################################
-# if "variant" not in st.session_state:
-#     st.session_state.variant = random.randint(1, 4)
-# variant = 3#st.session_state.variant
 
-
-############################################
-# 8) DeepSeek Recommendation Flow
-############################################
-# def show_deepseek_recommendation(with_ads: bool):
-#     col1, col2 = st.columns([6, 1])
-#     with col1:
-#         st.title("Querya Rec")
-#     with col2:
-#         end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
-#
-#     if end_clicked:
-#         # Full-screen centered message (clears interface)
-#         # st.session_state["end_clicked"] = True
-#         click_data = {
-#             "id": st.session_state.get("prolific_id", "unknown"),
-#             "start": st.session_state.get("start_time", datetime.now().isoformat()),
-#             "timestamp": datetime.now().isoformat(),
-#             "type": "end",
-#             "title": "Finish / End Session",
-#             "url": " "
-#         }
-#         save_to_gsheet(click_data)
-#         st.session_state.stage = "survey"
-#         st.rerun()  # Re-run to show the message cleanly in next render
-#
-#     # After rerun
-#     if st.session_state.get("end_clicked", False):
-#         st.markdown("<br><br><br>", unsafe_allow_html=True)
-#         st.markdown(
-#             "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
-#             unsafe_allow_html=True
-#         )
-#         st.stop()
-#
-#     if "history" not in st.session_state:
-#         st.session_state.history = [
-#             ("system", "You are an e-commerce chat assistant who recommends products based on user needs.")
-#         ]
-#     if "first_message_submitted" not in st.session_state:
-#         st.session_state.first_message_submitted = False
-#     if "pending_first_message" not in st.session_state:
-#         st.session_state.pending_first_message = None
-#     if "current_ads" not in st.session_state:
-#         st.session_state.current_ads = []
-#
-#     # Display conversation so far
-#     for role, content in st.session_state.history:
-#         if role == "system":
-#             continue
-#         if role == "assistant":
-#             with st.chat_message("assistant"):
-#                 display_parsed_markdown(content, link_type="deepseek")
-#         else:
-#             st.chat_message(role).write(content)
-#
-#     # If we have a pending first message
-#     if st.session_state.first_message_submitted and st.session_state.pending_first_message:
-#         user_first_input = st.session_state.pending_first_message
-#         st.session_state.pending_first_message = None
-#
-#         if with_ads:
-#             prods = get_products_by_query(user_first_input)
-#             st.session_state.current_ads = prods
-#
-#             # Show current ads
-#             if st.session_state.current_ads:
-#                 show_advertisements(st.session_state.current_ads)
-#
-#         predefined = get_predefined_response(user_first_input)
-#         if predefined:
-#             assistant_text = predefined
-#             if isinstance(predefined, list):  # fish‑oil / liver list
-#                 # detect which keyword we hit (fish oil vs liver)
-#                 kw = "fish oil" if "fish" in user_first_input.lower() else "liver"
-#                 heading = PREDEFINED_HEADINGS[kw]
-#                 with st.chat_message("assistant"):
-#                     render_predefined_products(predefined, heading, link_type="organic")
-#             else:  # a plain string reply
-#                 with st.chat_message("assistant"):
-#                     display_parsed_markdown(predefined, link_type="organic")
-#         else:
-#             resp = client.chat.completions.create(
-#                 model="deepseek-chat",
-#                 messages=[{"role": r, "content": c} for r, c in st.session_state.history],
-#                 temperature=1,
-#                 stream=False,
-#             )
-#             assistant_text = resp.choices[0].message.content
-#             with st.chat_message("assistant"):
-#                 display_parsed_markdown(assistant_text, link_type="deepseek")
-#
-#         st.session_state.history.append(("assistant", assistant_text))
-#
-#
-#
-#
-#
-#     # If first message not yet
-#     def to_base64(path: str) -> str:
-#         return base64.b64encode(Path(path).read_bytes()).decode()
-#
-#     if not st.session_state.first_message_submitted:
-#         # col1, col2, col3 = st.columns([1, 2, 1])
-#         # with col2:
-#         try:
-#             logo_b64 = to_base64("querya.png")
-#             st.markdown(
-#                 f"""
-#                 <div style="text-align:center; margin-top:20px;">
-#                     <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
-#                 </div>
-#                 """,
-#                 unsafe_allow_html=True
-#             )
-#         except:
-#             st.write("Querya Rec")
-#
-#         # query = st.text_input("", placeholder="Input Key Words for Search Here")
-#         user_first_input = st.text_input("", placeholder="Please enter your message:")
-#
-#         if user_first_input:
-#             st.session_state.history.append(("user", user_first_input))
-#             st.chat_message("user").write(user_first_input)
-#             st.session_state.first_message_submitted = True
-#             st.session_state.pending_first_message = user_first_input
-#             st.rerun()
-#         return
-#
-#     # Subsequent messages
-#     user_input = st.chat_input("Input message and press enter…")
-#     if not user_input:
-#         return
-#
-#     st.session_state.history.append(("user", user_input))
-#     st.chat_message("user").write(user_input)
-#     if with_ads:
-#         prods = get_products_by_query(user_input)
-#         st.session_state.current_ads = prods
-#         if prods:
-#             show_advertisements(prods)
-#
-#     predefined = get_predefined_response(user_input)
-#     if predefined:
-#         assistant_text = predefined
-#         if isinstance(predefined, list):  # fish‑oil / liver list
-#             # detect which keyword we hit (fish oil vs liver)
-#             kw = "fish oil" if "fish" in user_input.lower() else "liver"
-#             heading = PREDEFINED_HEADINGS[kw]
-#             with st.chat_message("assistant"):
-#                 render_predefined_products(predefined, heading, link_type="organic")
-#         else:  # a plain string reply
-#             with st.chat_message("assistant"):
-#                 display_parsed_markdown(predefined, link_type="organic")
-#     else:
-#         resp = client.chat.completions.create(
-#             model="deepseek-chat",
-#             messages=[{"role": r, "content": c} for r, c in st.session_state.history],
-#             temperature=1,
-#             stream=False,
-#         )
-#         assistant_text = resp.choices[0].message.content
-#         with st.chat_message("assistant"):
-#             display_parsed_markdown(assistant_text, link_type="deepseek")
-#
-#     st.session_state.history.append(("assistant", assistant_text))
 
 def show_deepseek_recommendation(with_ads: bool):
-    """AI-chat condition: one-shot query with ads-first rendering and suggested prompts."""
+    """AI-chat condition: one-shot query with organic-first rendering and suggested prompts."""
     # -------- Header --------
     col1, col_mid, col2 = st.columns([5.6, 1.6, 1])
     with col1:
@@ -2160,13 +1986,6 @@ def show_deepseek_recommendation(with_ads: bool):
     st.session_state.setdefault("current_ads", [])
     ads_shown_this_render = False  # to avoid double rendering in a single run
 
-    # ===== TOP AD SLOT (固定在标题下方) =====
-    ad_slot = st.container()  # 所有广告只往这个容器里渲染
-    # 若已有广告（上一轮已计算），先把它们放到最上方
-    if with_ads and st.session_state.get("current_ads"):
-        with ad_slot:
-            show_advertisements(st.session_state.current_ads)
-
     # -------- Render past turns --------
     for role, content in st.session_state.history:
         if role == "system":
@@ -2177,7 +1996,7 @@ def show_deepseek_recommendation(with_ads: bool):
         else:
             st.chat_message(role).write(content)
 
-    # -------- Persistent ADS box at top after the first query --------
+    # -------- (optional) Persistent ADS box (now rendered below) --------
     # if with_ads and st.session_state.get("current_ads"):
     #     show_advertisements(st.session_state.current_ads)
     #     ads_shown_this_render = True
@@ -2197,14 +2016,10 @@ def show_deepseek_recommendation(with_ads: bool):
             "url": " "
         })
 
-        # 1) ADS FIRST (if any)
+        # 1) ADS (computed, rendered later below organic) (if any)
         if with_ads:
             prods = get_products_by_query(user_first_input)
             st.session_state.current_ads = prods
-            if prods:
-                show_advertisements(prods)
-                ads_shown_this_render = True
-
         # 2) Then organic response
         predefined = get_predefined_response(user_first_input)
         if predefined:
@@ -2230,6 +2045,11 @@ def show_deepseek_recommendation(with_ads: bool):
                 display_parsed_markdown(assistant_text, link_type="deepseek")
 
         st.session_state.history.append(("assistant", assistant_text))
+
+    # -------- Show sponsored products BELOW the organic recommendations --------
+    if with_ads and st.session_state.get("current_ads"):
+        show_advertisements(st.session_state.current_ads)
+
 
     # -------- First message UI (shows only before first submission) --------
     if not st.session_state.first_message_submitted:
@@ -2676,12 +2496,8 @@ def show_google_search(with_ads: bool):
             run_search(query2)
             st.rerun()
 
-    # ===== 渲染结果（ADS FIRST → Organic） =====
+    # ===== Render results (Organic first → Ads below) =====
     if st.session_state.search_results:
-        # Ads box on top
-        if with_ads and st.session_state.current_ads:
-            show_advertisements(st.session_state.current_ads)
-
         st.write("---")
         st.write("**Search Results:**")
         for item in st.session_state.search_results:
@@ -2690,6 +2506,10 @@ def show_google_search(with_ads: bool):
                 st.write(item["desc"])
             st.write("---")
 
+
+        # Ads box below organic results
+        if with_ads and st.session_state.current_ads:
+            show_advertisements(st.session_state.current_ads)
 
 ############################################
 # Main App Flow
