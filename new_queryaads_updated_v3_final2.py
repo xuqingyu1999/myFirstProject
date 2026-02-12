@@ -946,7 +946,7 @@ def render_final_survey_page():
                 ("ev3", f"The {SYS_NOUN}’s behavior violated my expectations for how this kind of interaction should go."),
             ]
             ev = matrix_block(
-                stem=f"Thinking about how the {SYS_NOUN} behaved during this interaction, please indicate the extent to which you agree with the following statements: 1 = strongly disagree, 7 = strongly agree",
+                stem=f"Thinking about how the {SYS_NOUN} behaved during this interaction, please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=ev_items,
                 keyprefix="p1_ev",
                 left_anchor="strongly disagree",
@@ -962,7 +962,7 @@ def render_final_survey_page():
             ]
             emo = matrix_block_simple(
                 stem_lines=[
-                    f"Thinking about your interaction with this {PLATFORM_NOUN}, please indicate the extent to which you agree with the following statements: 1 = strongly disagree, 7 = strongly agree",
+                    f"Thinking about your interaction with this {PLATFORM_NOUN}, please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                     f"When interacting with this {PLATFORM_NOUN}, I feel:"
                 ],
                 items=emo_items,
@@ -978,7 +978,7 @@ def render_final_survey_page():
                 ("intr3", f"The interaction with the {SYS_NOUN} felt invasive."),
             ]
             intr = matrix_block(
-                stem=f"How do you perceive your interaction with this {SYS_NOUN}? Please indicate the extent to which you agree with the following statements: 1 = strongly disagree, 7 = strongly agree",
+                stem=f"How do you perceive your interaction with this {SYS_NOUN}? Please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=intr_items,
                 keyprefix="p1_intr",
                 left_anchor="strongly disagree",
@@ -993,7 +993,7 @@ def render_final_survey_page():
                 ("priv4", f"I am concerned that my personal information may not be securely protected from unauthorized access when using this {SYS_NOUN}."),
             ]
             priv = matrix_block(
-                stem="Please indicate the extent to which you agree with the following statements: 1 = strongly disagree, 7 = strongly agree",
+                stem="Please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=priv_items,
                 keyprefix="p1_priv",
                 left_anchor="strongly disagree",
@@ -1079,7 +1079,7 @@ def render_final_survey_page():
                 ("pr3", f"I feel emotionally connected to {('AI chatbots' if is_ai else 'search engines')}."),
             ]
             rel = matrix_block(
-                stem=f"How do you perceive your relationship with {('AI chatbots' if is_ai else 'search engines')} overall? Please indicate the extent to which you agree with the following statements: 1 = strongly disagree, 7 = strongly agree",
+                stem=f"How do you perceive your relationship with {('AI chatbots' if is_ai else 'search engines')} overall? Please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=rel_items,
                 keyprefix="p2_rel",
                 left_anchor="strongly disagree",
