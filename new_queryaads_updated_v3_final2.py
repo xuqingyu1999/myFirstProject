@@ -74,7 +74,7 @@ def save_to_gsheet(data) -> bool:
     last_err = None
     for i in range(3):
         try:
-            sheet = client.open("SeEn Ads").sheet1
+            sheet = client.open("Querya EXP3").sheet1
             # 新顺序：id, start, variant, timestamp, type, title, url
             sheet.append_row([data.get(k, "") for k in ["id", "start", "variant", "timestamp", "type", "title", "url"]])
             return True
