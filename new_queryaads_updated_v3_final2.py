@@ -812,18 +812,17 @@ def render_final_survey_page():
     # ---- determine condition ----
     v, is_ai, with_ads, group_label = get_variant_flags()
 
-    # Two-page survey state
-    st.session_state.setdefault("survey_step", 1)  # 1 or 2
+    # Three-page survey state
+    st.session_state.setdefault("survey_step", 1)  # 1, 2, or 3
 
     # Basic nouns
     PLATFORM_NOUN = "AI chatbot platform" if is_ai else "search engine platform"
     SYS_NOUN = "AI chatbot" if is_ai else "search engine"
-    SYS_NOUN_CAP = "AI Chatbot" if is_ai else "Search Engine"
     SYS_PLURAL = "AI chatbots" if is_ai else "search engines"
 
     st.title("Final Survey")
 
-    # --- small CSS to keep radios compact; anchors close to the scale ---
+    # --- small CSS to keep radios compact ---
     st.markdown(
         """
         <style>
@@ -835,7 +834,8 @@ def render_final_survey_page():
 
     # ---------- helpers ----------
     def is_blank(x) -> bool:
-        return x is None or (isinstance(x, str) and x.strip() == "") or x == []
+        # NOTE: An empty list (e.g., multiselect with no options chosen) is a valid answer.
+        return x is None or (isinstance(x, str) and x.strip() == "")
 
     def likert7(question: str, key: str, left_anchor: str, right_anchor: str) -> int | None:
         """Single 7-point item with explicit anchors in the question line."""
@@ -889,7 +889,7 @@ def render_final_survey_page():
         return results
 
     # =======================
-    # Page 1 / 2
+    # Page 1 / 3
     # =======================
     if st.session_state.get("survey_step", 1) == 1:
         # Prominent instruction
@@ -1031,28 +1031,26 @@ def render_final_survey_page():
         return
 
     # =======================
-    # Page 2 / 2
+    # Page 2 / 3
     # =======================
-    # Safety: if someone lands here without Page 1 stored (e.g., refresh edge-case), send them back.
-    if "survey_page1" not in st.session_state:
-        st.session_state["survey_step"] = 1
-        st.rerun()
+    if st.session_state.get("survey_step", 1) == 2:
+        # Safety: if someone lands here without Page 1 stored (e.g., refresh edge-case), send them back.
+        if "survey_page1" not in st.session_state:
+            st.session_state["survey_step"] = 1
+            st.rerun()
 
-    # Prominent instruction
-    if is_ai:
-        st.info(
-            "Next, we would like to know your general perceptions of AI chatbots. "
-            "Please answer the following questions."
-        )
-    else:
-        st.info(
-            "Next, we would like to know your general perceptions of search engines. "
-            "Please answer the following questions."
-        )
+        # Prominent instruction
+        if is_ai:
+            st.info(
+                "Next, we would like to know your general perceptions of AI chatbots. "
+                "Please answer the following questions."
+            )
+        else:
+            st.info(
+                "Next, we would like to know your general perceptions of search engines. "
+                "Please answer the following questions."
+            )
 
-    # ------- form begins -------
-    _form_holder = st.container()
-    with _form_holder:
         with st.form("final_survey_page2"):
             st.markdown("Please complete **all** questions on this page. There is no default selection.")
 
@@ -1100,13 +1098,48 @@ def render_final_survey_page():
                 right_anchor="closer to the right description",
             )
 
+            next_clicked = st.form_submit_button("Next")
+
+        if next_clicked:
+            all_vals = list(agency.values()) + list(rel.values()) + list(ce.values())
+            if any(is_blank(v) for v in all_vals):
+                st.error("Please complete all questions on this page before proceeding.")
+                return
+
+            st.session_state["survey_page2"] = {
+                "perceived_autonomous_agency": agency,
+                "perceived_personal_relationship": rel,
+                "perceived_communal_exchange_orientation": ce,
+            }
+            st.session_state["survey_step"] = 3
+            st.rerun()
+
+        return
+
+    # =======================
+    # Page 3 / 3
+    # =======================
+    # Safety: if someone lands here without Page 1/2 stored (e.g., refresh edge-case), send them back.
+    if "survey_page1" not in st.session_state:
+        st.session_state["survey_step"] = 1
+        st.rerun()
+    if "survey_page2" not in st.session_state:
+        st.session_state["survey_step"] = 2
+        st.rerun()
+
+    # ------- form begins -------
+    _form_holder = st.container()
+    with _form_holder:
+        with st.form("final_survey_page3"):
+            st.markdown("Please complete **all** questions on this page. There is no default selection.")
+
             # ------ General Manipulation check ------
             st.markdown("**1. What did you use to seek recommended products in this study?**")
             mc_tool = st.radio(
                 label="",
                 options=["An AI chatbot", "A search engine"],
                 index=None,
-                key="p2_mc_tool",
+                key="p3_mc_tool",
                 label_visibility="collapsed",
             )
 
@@ -1117,7 +1150,7 @@ def render_final_survey_page():
                 label="",
                 options=["Yes", "No"],
                 index=None,
-                key="p2_mc_ads",
+                key="p3_mc_ads",
                 label_visibility="collapsed",
             )
             st.markdown("---")
@@ -1125,21 +1158,21 @@ def render_final_survey_page():
             # ------ Other checks (condition-specific wording) ------
             fish_fam = likert7(
                 "How familiar are you with fish oil supplements overall?",
-                key="p2_fish_fam",
+                key="p3_fish_fam",
                 left_anchor="Not familiar at all",
                 right_anchor="Very familiar",
             )
 
             sys_fam = likert7(
                 f"How familiar are you with {('AI chatbots' if is_ai else 'search engines')} overall?",
-                key="p2_sys_fam",
+                key="p3_sys_fam",
                 left_anchor="Not familiar at all",
                 right_anchor="Very familiar",
             )
 
             sys_att = likert7(
                 f"What is your attitude toward {('AI chatbots' if is_ai else 'search engines')} overall?",
-                key="p2_sys_att",
+                key="p3_sys_att",
                 left_anchor="Very negative",
                 right_anchor="Very positive",
             )
@@ -1152,7 +1185,7 @@ def render_final_survey_page():
                 options=[0, 1, 2, 3, 4, 5, 6, 7],
                 index=None,
                 horizontal=True,
-                key="p2_days_used",
+                key="p3_days_used",
                 label_visibility="collapsed",
             )
             st.markdown("<div style='height:0.25rem;'></div>", unsafe_allow_html=True)
@@ -1176,13 +1209,13 @@ def render_final_survey_page():
                 label="",
                 options=usage_options,
                 default=[],
-                key="p2_usage_30d",
+                key="p3_usage_30d",
                 label_visibility="collapsed",
             )
 
             ads_exposure = likert7(
                 f"How frequently have you been exposed to sponsored content (ads) in {('AI chatbot responses' if is_ai else 'search engine results')} in your daily life?",
-                key="p2_ads_exposure",
+                key="p3_ads_exposure",
                 left_anchor="not at all frequently",
                 right_anchor="very frequently",
             )
@@ -1194,7 +1227,7 @@ def render_final_survey_page():
             age_str = st.text_input(
                 label="",
                 value="",
-                key="p2_demo_age",
+                key="p3_demo_age",
                 placeholder="Enter an integer between 18 and 99",
                 label_visibility="collapsed",
             )
@@ -1204,7 +1237,7 @@ def render_final_survey_page():
                 label="",
                 options=["Male", "Female"],
                 index=None,
-                key="p2_demo_sex",
+                key="p3_demo_sex",
                 label_visibility="collapsed",
             )
 
@@ -1220,7 +1253,7 @@ def render_final_survey_page():
                 ],
                 index=None,
                 placeholder="Select…",
-                key="p2_demo_edu",
+                key="p3_demo_edu",
                 label_visibility="collapsed",
             )
 
@@ -1237,7 +1270,7 @@ def render_final_survey_page():
                 ],
                 index=None,
                 placeholder="Select…",
-                key="p2_demo_ethnicity",
+                key="p3_demo_ethnicity",
                 label_visibility="collapsed",
             )
 
@@ -1245,19 +1278,31 @@ def render_final_survey_page():
 
         # ---------- validation & submission ----------
         if submitted:
-            # Extra safety: ensure Page 1 was fully completed before accepting Page 2 submission
+            # Extra safety: ensure Page 1 & 2 were fully completed
             p1 = st.session_state.get("survey_page1", {})
-            p1_vals = []
-            try:
-                for blk in (p1 or {}).values():
-                    if isinstance(blk, dict):
-                        p1_vals.extend(list(blk.values()))
-            except Exception:
-                p1_vals = []
+            p2 = st.session_state.get("survey_page2", {})
+
+            def _vals_from_page(page_obj: dict) -> list:
+                vals = []
+                try:
+                    for blk in (page_obj or {}).values():
+                        if isinstance(blk, dict):
+                            vals.extend(list(blk.values()))
+                except Exception:
+                    pass
+                return vals
+
+            p1_vals = _vals_from_page(p1)
+            p2_vals = _vals_from_page(p2)
 
             if (not p1_vals) or any(is_blank(v) for v in p1_vals):
                 st.error("It looks like some items on **Page 1** are missing. Please complete Page 1 first.")
                 st.session_state["survey_step"] = 1
+                st.rerun()
+
+            if (not p2_vals) or any(is_blank(v) for v in p2_vals):
+                st.error("It looks like some items on **Page 2** are missing. Please complete Page 2 first.")
+                st.session_state["survey_step"] = 2
                 st.rerun()
 
             # validate age
@@ -1273,10 +1318,6 @@ def render_final_survey_page():
                     age_err = "Age must be a whole number."
 
             required = {
-                # Page 2: core constructs
-                **{f"agency_{k}": v for k, v in agency.items()},
-                **{f"relationship_{k}": v for k, v in rel.items()},
-                **{f"communal_exchange_{k}": v for k, v in ce.items()},
                 # Manipulation checks
                 "mc_tool": mc_tool,
                 "mc_ads": mc_ads,
@@ -1306,10 +1347,8 @@ def render_final_survey_page():
                 "group": "AI" if is_ai else "Search",
                 "with_ads": with_ads,
                 "page1": st.session_state.get("survey_page1", {}),
-                "page2": {
-                    "perceived_autonomous_agency": agency,
-                    "perceived_personal_relationship": rel,
-                    "perceived_communal_exchange_orientation": ce,
+                "page2": st.session_state.get("survey_page2", {}),
+                "page3": {
                     "manipulation_check": {
                         "tool_used": mc_tool,
                         "saw_sponsored": mc_ads,
@@ -1346,7 +1385,6 @@ def render_final_survey_page():
                         "We could not record your responses due to a temporary server/network error. "
                         "Please click **Submit** again. (Do not close this tab yet.)"
                     )
-                    # Optional: show latest error for debugging
                     err_txt = st.session_state.get("_gsheet_last_error", "")
                     if err_txt:
                         st.caption(f"Debug info: {err_txt}")
@@ -1369,6 +1407,7 @@ def render_final_survey_page():
                 st.markdown(f"[Please click here to complete]({target})")
 
             st.stop()
+
 
 def render_predefined_products(prod_list, heading, link_type="organic"):
     """Print heading once, then for each product: title ★ + description."""
