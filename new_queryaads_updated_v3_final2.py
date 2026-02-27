@@ -31,9 +31,9 @@ import webbrowser
 def get_completion_url():
     try:
         return st.secrets.get("COMPLETION_URL", None) or os.getenv(
-            "COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=CA9D5DAK"
+            "COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=C52ZL66G"
     except Exception:
-        return os.getenv("COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=CA9D5DAK"
+        return os.getenv("COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=C52ZL66G"
 
 
 # ====== 实验阶段机位：'pid' -> 'instructions' -> 'experiment' -> 'survey' ======
@@ -47,15 +47,48 @@ def get_credentials_from_secrets():
     creds_dict = {key: value for key, value in st.secrets["GOOGLE_CREDENTIALS"].items()}
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
+
     return creds_dict
 
 
-# def save_to_gsheet(data: dict):
-#     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-#     creds = ServiceAccountCredentials.from_json_keyfile_name("streamlit_app.json", scope)
-#     client = gspread.authorize(creds)
-#     sheet = client.open("Click History").sheet1
-#     sheet.append_row([data[k] for k in ["id", "timestamp", "type", "title", "url"]])
+DEFAULT_SPREADSHEET_AI = "Querya EXP4 AI"
+DEFAULT_SPREADSHEET_SE = "Querya EXP4 SE"
+
+def _resolve_spreadsheet_handle(client, *, variant=None):
+    """Return a gspread Spreadsheet handle for the current condition.
+
+    Preference order:
+      1) Secrets/env spreadsheet IDs: GSHEET_ID_AI / GSHEET_ID_SE
+      2) Secrets/env spreadsheet names: GSHEET_NAME_AI / GSHEET_NAME_SE
+      3) Defaults above
+    """
+    v = variant if variant is not None else st.session_state.get("variant", None)
+    is_ai = str(v) in ("1", "0")  # 1 = AI, 2 = Search (by design)
+
+    try:
+        id_ai = st.secrets.get("GSHEET_ID_AI", None)
+        id_se = st.secrets.get("GSHEET_ID_SE", None)
+        name_ai = st.secrets.get("GSHEET_NAME_AI", None)
+        name_se = st.secrets.get("GSHEET_NAME_SE", None)
+    except Exception:
+        id_ai = id_se = None
+        name_ai = name_se = None
+
+    id_ai = id_ai or os.getenv("GSHEET_ID_AI")
+    id_se = id_se or os.getenv("GSHEET_ID_SE")
+
+    name_ai = name_ai or os.getenv("GSHEET_NAME_AI") or DEFAULT_SPREADSHEET_AI
+    name_se = name_se or os.getenv("GSHEET_NAME_SE") or DEFAULT_SPREADSHEET_SE
+
+    # Prefer IDs when available (more robust than titles).
+    if is_ai and id_ai:
+        return client.open_by_key(id_ai)
+    if (not is_ai) and id_se:
+        return client.open_by_key(id_se)
+
+    # Fallback to spreadsheet titles.
+    return client.open(name_ai if is_ai else name_se)
+
 
 def save_to_gsheet(data) -> bool:
     # 自动注入 variant（如果还没分配，就留空字符串）
@@ -73,7 +106,8 @@ def save_to_gsheet(data) -> bool:
     last_err = None
     for i in range(3):
         try:
-            sheet = client.open("Querya EXP3").sheet1
+            spreadsheet = _resolve_spreadsheet_handle(client, variant=data.get("variant"))
+            sheet = spreadsheet.sheet1
             # 新顺序：id, start, variant, timestamp, type, title, url
             sheet.append_row([data.get(k, "") for k in ["id", "start", "variant", "timestamp", "type", "title", "url"]])
             return True
@@ -86,6 +120,36 @@ def save_to_gsheet(data) -> bool:
     except Exception:
         pass
     return False
+
+# def save_to_gsheet(data) -> bool:
+#     # 自动注入 variant（如果还没分配，就留空字符串）
+#     data = dict(data)
+#     data.setdefault("variant", st.session_state.get("variant", ""))
+#
+#     creds = ServiceAccountCredentials.from_json_keyfile_dict(
+#         get_credentials_from_secrets(),
+#         scopes=[
+#             "https://www.googleapis.com/auth/spreadsheets",
+#             "https://www.googleapis.com/auth/drive"
+#         ]
+#     )
+#     client = gspread.authorize(creds)
+#     last_err = None
+#     for i in range(3):
+#         try:
+#             sheet = client.open("Querya EXP4").sheet1
+#             # 新顺序：id, start, variant, timestamp, type, title, url
+#             sheet.append_row([data.get(k, "") for k in ["id", "start", "variant", "timestamp", "type", "title", "url"]])
+#             return True
+#         except Exception as e:
+#             last_err = e
+#             time.sleep(0.5)
+#     # keep the latest error for debugging (optional)
+#     try:
+#         st.session_state["_gsheet_last_error"] = str(last_err) if last_err else ""
+#     except Exception:
+#         pass
+#     return False
 
 
 # simple in‑memory router
@@ -698,7 +762,8 @@ def render_instructions_page():
 
         Imagine you are shopping for a **fish oil supplement**.  
         To help you decide which product to purchase, you will use an **AI chatbot** (“Querya”) to get some recommended products to consider.
-
+        **The AI chatbot’s output will include advertisements (sponsored content).**
+        
         ---
 
         **Please follow these steps:**
@@ -727,7 +792,8 @@ def render_instructions_page():
 
                 Imagine you are shopping for a **fish oil supplement**.  
                 To help you decide which product to purchase, you will use a **search engine** (“Querya”) to find some recommended products.
-
+                **The Search Engine’s output will include advertisements (sponsored content).**
+                
                 ---
 
                 **Please follow these steps:**
@@ -837,9 +903,12 @@ def render_final_survey_page():
         # NOTE: An empty list (e.g., multiselect with no options chosen) is a valid answer.
         return x is None or (isinstance(x, str) and x.strip() == "")
 
-    def likert7(question: str, key: str, left_anchor: str, right_anchor: str) -> int | None:
-        """Single 7-point item with explicit anchors in the question line."""
-        st.markdown(f"**{question} (1 = {left_anchor}, 7 = {right_anchor})**")
+    def likert7(question: str, key: str, left_anchor: str | None = None, right_anchor: str | None = None) -> int | None:
+        """Single 7-point item. If anchors are provided, show them inline; otherwise show only the question."""
+        if left_anchor is not None and right_anchor is not None:
+            st.markdown(f"**{question} (1 = {left_anchor}, 7 = {right_anchor})**")
+        else:
+            st.markdown(f"**{question}**")
         val = st.radio(
             "",
             options=[1, 2, 3, 4, 5, 6, 7],
@@ -898,11 +967,13 @@ def render_final_survey_page():
                 "First, we would like to know your perceptions of interacting with this AI chatbot platform. "
                 "Please respond to the following questions."
             )
+            # st.markdown("**The AI chatbot’s output will include advertisements (sponsored content).**")
         else:
             st.info(
                 "First, we would like to know your perceptions of interacting with this search engine platform. "
                 "Please respond to the following questions."
             )
+            # st.markdown("**The Search Engine’s output will include advertisements (sponsored content).**")
 
         with st.form("final_survey_page1"):
             st.markdown("Please complete **all** questions on this page. There is no default selection.")
@@ -915,7 +986,7 @@ def render_final_survey_page():
                 ("obj4", "Impartial"),
             ]
             obj = matrix_block(
-                stem=f"How do you perceive this {PLATFORM_NOUN}? (1 = not at all, 7 = very much)",
+                stem=f"How do you perceive this {PLATFORM_NOUN}, given that its responses include advertisements (sponsored content)? (1 = not at all, 7 = very much)",
                 items=obj_items,
                 keyprefix="p1_obj",
                 left_anchor="not at all",
@@ -931,7 +1002,7 @@ def render_final_survey_page():
                 ("cred5", "Having users’ best interests at heart"),
             ]
             cred = matrix_block(
-                stem=f"How do you perceive this {PLATFORM_NOUN}? (1 = not at all, 7 = very much)",
+                stem=f"How do you perceive this {PLATFORM_NOUN}, given that its responses include advertisements (sponsored content)? (1 = not at all, 7 = very much)",
                 items=cred_items,
                 keyprefix="p1_cred",
                 left_anchor="not at all",
@@ -945,7 +1016,7 @@ def render_final_survey_page():
                 ("ev3", f"The {SYS_NOUN}’s behavior violated my expectations for how this kind of interaction should go."),
             ]
             ev = matrix_block(
-                stem=f"Thinking about how the {SYS_NOUN} behaved during this interaction, please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
+                stem=f"Thinking about how the {SYS_NOUN} behaved during this interaction—especially its inclusion of advertisements (sponsored content) in its responses—please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=ev_items,
                 keyprefix="p1_ev",
                 left_anchor="strongly disagree",
@@ -961,7 +1032,7 @@ def render_final_survey_page():
             ]
             emo = matrix_block_simple(
                 stem_lines=[
-                    f"Thinking about your interaction with this {PLATFORM_NOUN}, please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
+                    f"Thinking about how the {SYS_NOUN} behaved during this interaction—especially its inclusion of advertisements (sponsored content) in its responses—please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                     f"When interacting with this {PLATFORM_NOUN}, I feel:"
                 ],
                 items=emo_items,
@@ -977,7 +1048,7 @@ def render_final_survey_page():
                 ("intr3", f"The interaction with the {SYS_NOUN} felt invasive."),
             ]
             intr = matrix_block(
-                stem=f"How do you perceive your interaction with this {SYS_NOUN}? Please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
+                stem=f"How do you perceive your interaction with this {SYS_NOUN}, especially considering the advertisements (sponsored content) included in its responses? Please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=intr_items,
                 keyprefix="p1_intr",
                 left_anchor="strongly disagree",
@@ -1045,11 +1116,13 @@ def render_final_survey_page():
                 "Next, we would like to know your general perceptions of AI chatbots. "
                 "Please answer the following questions."
             )
+            # st.markdown("**The AI chatbot’s output will include advertisements (sponsored content).**")
         else:
             st.info(
                 "Next, we would like to know your general perceptions of search engines. "
                 "Please answer the following questions."
             )
+            # st.markdown("**The Search Engine’s output will include advertisements (sponsored content).**")
 
         with st.form("final_survey_page2"):
             st.markdown("Please complete **all** questions on this page. There is no default selection.")
@@ -1213,6 +1286,11 @@ def render_final_survey_page():
                 label_visibility="collapsed",
             )
 
+            att_check = likert7(
+                "Please select two",
+                key="chk_att",
+            )
+
             ads_exposure = likert7(
                 f"How frequently have you been exposed to sponsored content (ads) in {('AI chatbot responses' if is_ai else 'search engine results')} in your daily life?",
                 key="p3_ads_exposure",
@@ -1326,6 +1404,7 @@ def render_final_survey_page():
                 "system_familiarity": sys_fam,
                 "system_attitude": sys_att,
                 "days_used_past_7": days_used,
+                "attention_check": att_check,
                 "ads_exposure": ads_exposure,
                 # Demographics
                 "sex": sex,
@@ -1359,6 +1438,7 @@ def render_final_survey_page():
                         "system_attitude": sys_att,
                         "days_used_past_7": days_used,
                         "usage_30d": usage_30d,
+                        "attention_check": att_check,
                         "ads_exposure_daily_life": ads_exposure,
                     },
                     "demographics": {
@@ -1991,7 +2071,179 @@ def get_products_by_query(query: str):
         return []
 
 
+############################################
+# Step 2: random "variant"
+############################################
+# if "variant" not in st.session_state:
+#     st.session_state.variant = random.randint(1, 4)
+# variant = 3#st.session_state.variant
 
+
+############################################
+# 8) DeepSeek Recommendation Flow
+############################################
+# def show_deepseek_recommendation(with_ads: bool):
+#     col1, col2 = st.columns([6, 1])
+#     with col1:
+#         st.title("Querya Rec")
+#     with col2:
+#         end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
+#
+#     if end_clicked:
+#         # Full-screen centered message (clears interface)
+#         # st.session_state["end_clicked"] = True
+#         click_data = {
+#             "id": st.session_state.get("prolific_id", "unknown"),
+#             "start": st.session_state.get("start_time", datetime.now().isoformat()),
+#             "timestamp": datetime.now().isoformat(),
+#             "type": "end",
+#             "title": "Finish / End Session",
+#             "url": " "
+#         }
+#         save_to_gsheet(click_data)
+#         st.session_state.stage = "survey"
+#         st.rerun()  # Re-run to show the message cleanly in next render
+#
+#     # After rerun
+#     if st.session_state.get("end_clicked", False):
+#         st.markdown("<br><br><br>", unsafe_allow_html=True)
+#         st.markdown(
+#             "<h1 style='text-align:center;'>✅ Session ended. Thank you!</h1>",
+#             unsafe_allow_html=True
+#         )
+#         st.stop()
+#
+#     if "history" not in st.session_state:
+#         st.session_state.history = [
+#             ("system", "You are an e-commerce chat assistant who recommends products based on user needs.")
+#         ]
+#     if "first_message_submitted" not in st.session_state:
+#         st.session_state.first_message_submitted = False
+#     if "pending_first_message" not in st.session_state:
+#         st.session_state.pending_first_message = None
+#     if "current_ads" not in st.session_state:
+#         st.session_state.current_ads = []
+#
+#     # Display conversation so far
+#     for role, content in st.session_state.history:
+#         if role == "system":
+#             continue
+#         if role == "assistant":
+#             with st.chat_message("assistant"):
+#                 display_parsed_markdown(content, link_type="deepseek")
+#         else:
+#             st.chat_message(role).write(content)
+#
+#     # If we have a pending first message
+#     if st.session_state.first_message_submitted and st.session_state.pending_first_message:
+#         user_first_input = st.session_state.pending_first_message
+#         st.session_state.pending_first_message = None
+#
+#         if with_ads:
+#             prods = get_products_by_query(user_first_input)
+#             st.session_state.current_ads = prods
+#
+#             # Show current ads
+#             if st.session_state.current_ads:
+#                 show_advertisements(st.session_state.current_ads)
+#
+#         predefined = get_predefined_response(user_first_input)
+#         if predefined:
+#             assistant_text = predefined
+#             if isinstance(predefined, list):  # fish‑oil / liver list
+#                 # detect which keyword we hit (fish oil vs liver)
+#                 kw = "fish oil" if "fish" in user_first_input.lower() else "liver"
+#                 heading = PREDEFINED_HEADINGS[kw]
+#                 with st.chat_message("assistant"):
+#                     render_predefined_products(predefined, heading, link_type="organic")
+#             else:  # a plain string reply
+#                 with st.chat_message("assistant"):
+#                     display_parsed_markdown(predefined, link_type="organic")
+#         else:
+#             resp = client.chat.completions.create(
+#                 model="deepseek-chat",
+#                 messages=[{"role": r, "content": c} for r, c in st.session_state.history],
+#                 temperature=1,
+#                 stream=False,
+#             )
+#             assistant_text = resp.choices[0].message.content
+#             with st.chat_message("assistant"):
+#                 display_parsed_markdown(assistant_text, link_type="deepseek")
+#
+#         st.session_state.history.append(("assistant", assistant_text))
+#
+#
+#
+#
+#
+#     # If first message not yet
+#     def to_base64(path: str) -> str:
+#         return base64.b64encode(Path(path).read_bytes()).decode()
+#
+#     if not st.session_state.first_message_submitted:
+#         # col1, col2, col3 = st.columns([1, 2, 1])
+#         # with col2:
+#         try:
+#             logo_b64 = to_base64("querya.png")
+#             st.markdown(
+#                 f"""
+#                 <div style="text-align:center; margin-top:20px;">
+#                     <img src="data:image/png;base64,{logo_b64}" style="height:80px;" />
+#                 </div>
+#                 """,
+#                 unsafe_allow_html=True
+#             )
+#         except:
+#             st.write("Querya Rec")
+#
+#         # query = st.text_input("", placeholder="Input Key Words for Search Here")
+#         user_first_input = st.text_input("", placeholder="Please enter your message:")
+#
+#         if user_first_input:
+#             st.session_state.history.append(("user", user_first_input))
+#             st.chat_message("user").write(user_first_input)
+#             st.session_state.first_message_submitted = True
+#             st.session_state.pending_first_message = user_first_input
+#             st.rerun()
+#         return
+#
+#     # Subsequent messages
+#     user_input = st.chat_input("Input message and press enter…")
+#     if not user_input:
+#         return
+#
+#     st.session_state.history.append(("user", user_input))
+#     st.chat_message("user").write(user_input)
+#     if with_ads:
+#         prods = get_products_by_query(user_input)
+#         st.session_state.current_ads = prods
+#         if prods:
+#             show_advertisements(prods)
+#
+#     predefined = get_predefined_response(user_input)
+#     if predefined:
+#         assistant_text = predefined
+#         if isinstance(predefined, list):  # fish‑oil / liver list
+#             # detect which keyword we hit (fish oil vs liver)
+#             kw = "fish oil" if "fish" in user_input.lower() else "liver"
+#             heading = PREDEFINED_HEADINGS[kw]
+#             with st.chat_message("assistant"):
+#                 render_predefined_products(predefined, heading, link_type="organic")
+#         else:  # a plain string reply
+#             with st.chat_message("assistant"):
+#                 display_parsed_markdown(predefined, link_type="organic")
+#     else:
+#         resp = client.chat.completions.create(
+#             model="deepseek-chat",
+#             messages=[{"role": r, "content": c} for r, c in st.session_state.history],
+#             temperature=1,
+#             stream=False,
+#         )
+#         assistant_text = resp.choices[0].message.content
+#         with st.chat_message("assistant"):
+#             display_parsed_markdown(assistant_text, link_type="deepseek")
+#
+#     st.session_state.history.append(("assistant", assistant_text))
 
 def show_deepseek_recommendation(with_ads: bool):
     """AI-chat condition: one-shot query with organic-first rendering and suggested prompts."""
@@ -2026,10 +2278,15 @@ def show_deepseek_recommendation(with_ads: bool):
     ads_shown_this_render = False  # to avoid double rendering in a single run
 
     # -------- Render past turns --------
+    ads_inserted = False
     for role, content in st.session_state.history:
         if role == "system":
             continue
         if role == "assistant":
+            # Place sponsored products ABOVE the organic assistant output (more visible)
+            if with_ads and (not ads_inserted) and st.session_state.get("current_ads"):
+                show_advertisements(st.session_state.current_ads)
+                ads_inserted = True
             with st.chat_message("assistant"):
                 display_parsed_markdown(content, link_type="deepseek")
         else:
@@ -2055,10 +2312,16 @@ def show_deepseek_recommendation(with_ads: bool):
             "url": " "
         })
 
-        # 1) ADS (computed, rendered later below organic) (if any)
+        # 1) ADS (compute + render ABOVE organic output)
+        prods = []
         if with_ads:
             prods = get_products_by_query(user_first_input)
             st.session_state.current_ads = prods
+
+        if with_ads and prods:
+            show_advertisements(prods)
+            ads_shown_this_render = True
+
         # 2) Then organic response
         predefined = get_predefined_response(user_first_input)
         if predefined:
@@ -2084,10 +2347,6 @@ def show_deepseek_recommendation(with_ads: bool):
                 display_parsed_markdown(assistant_text, link_type="deepseek")
 
         st.session_state.history.append(("assistant", assistant_text))
-
-    # -------- Show sponsored products BELOW the organic recommendations --------
-    if with_ads and st.session_state.get("current_ads"):
-        show_advertisements(st.session_state.current_ads)
 
 
     # -------- First message UI (shows only before first submission) --------
@@ -2538,6 +2797,12 @@ def show_google_search(with_ads: bool):
     # ===== Render results (Organic first → Ads below) =====
     if st.session_state.search_results:
         st.write("---")
+
+        # Ads box on top (more visible)
+        if with_ads and st.session_state.current_ads:
+            show_advertisements(st.session_state.current_ads)
+            st.write("---")
+
         st.write("**Search Results:**")
         for item in st.session_state.search_results:
             show_product_item(item, link_type="organic", show_image=True, image_position="below")
@@ -2545,10 +2810,6 @@ def show_google_search(with_ads: bool):
                 st.write(item["desc"])
             st.write("---")
 
-
-        # Ads box below organic results
-        if with_ads and st.session_state.current_ads:
-            show_advertisements(st.session_state.current_ads)
 
 ############################################
 # Main App Flow
