@@ -1011,12 +1011,14 @@ def render_final_survey_page():
 
             # 3) Expectation Violation
             ev_items = [
-                ("ev1", f"The interaction with the {SYS_NOUN} did not fit what I expect from this kind of system."),
-                ("ev2", f"Something about the interaction with the {SYS_NOUN} felt inappropriate."),
-                ("ev3", f"The {SYS_NOUN}’s behavior violated my expectations for how this kind of interaction should go."),
+                ("ev1",
+                 f"The advertisements in this interaction with the {SYS_NOUN} did not fit what I expect from this kind of system."),
+                ("ev2", f"The advertisements in this interaction with the {SYS_NOUN} felt inappropriate."),
+                ("ev3",
+                 f"The advertisements in this interaction with the {SYS_NOUN} violated my expectations for how this kind of interaction should go."),
             ]
             ev = matrix_block(
-                stem=f"Thinking about how the {SYS_NOUN} behaved during this interaction—especially its inclusion of advertisements (sponsored content) in its responses—please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
+                stem=f"Thinking about how the {SYS_NOUN} behaved during this interaction, please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=ev_items,
                 keyprefix="p1_ev",
                 left_anchor="strongly disagree",
@@ -1025,15 +1027,14 @@ def render_final_survey_page():
 
             # 4) Emotional Aversion Toward the Platform
             emo_items = [
-                ("emo1", "Uncomfortable"),
-                ("emo2", "Uneasy"),
-                ("emo3", "Irritated"),
-                ("emo4", "Disturbed"),
+                ("emo1", f"The advertisements in this interaction with the {SYS_NOUN} made me feel uncomfortable."),
+                ("emo2", f"The advertisements in this interaction with the {SYS_NOUN} made me feel uneasy."),
+                ("emo3", f"The advertisements in this interaction with the {SYS_NOUN} made me feel irritated."),
+                ("emo4", f"The advertisements in this interaction with the {SYS_NOUN} made me feel disturbed."),
             ]
             emo = matrix_block_simple(
                 stem_lines=[
-                    f"Thinking about how the {SYS_NOUN} behaved during this interaction—especially its inclusion of advertisements (sponsored content) in its responses—please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
-                    f"When interacting with this {PLATFORM_NOUN}, I feel:"
+                    f"Thinking about your interaction with this {PLATFORM_NOUN}, please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 ],
                 items=emo_items,
                 keyprefix="p1_emo",
@@ -1043,12 +1044,12 @@ def render_final_survey_page():
 
             # 5) Perceived Intrusiveness
             intr_items = [
-                ("intr1", f"Something in this interaction with the {SYS_NOUN} felt distracting."),
-                ("intr2", f"The way the {SYS_NOUN} behaved felt intrusive."),
-                ("intr3", f"The interaction with the {SYS_NOUN} felt invasive."),
+                ("intr1", f"The advertisements in this interaction with the {SYS_NOUN} felt distracting."),
+                ("intr2", f"The advertisements in this interaction with the {SYS_NOUN} felt intrusive."),
+                ("intr3", f"The advertisements in this interaction with the {SYS_NOUN} felt invasive."),
             ]
             intr = matrix_block(
-                stem=f"How do you perceive your interaction with this {SYS_NOUN}, especially considering the advertisements (sponsored content) included in its responses? Please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
+                stem=f"How do you perceive your interaction with this {SYS_NOUN}? Please indicate the extent to which you agree with the following statements: (1 = strongly disagree, 7 = strongly agree)",
                 items=intr_items,
                 keyprefix="p1_intr",
                 left_anchor="strongly disagree",
