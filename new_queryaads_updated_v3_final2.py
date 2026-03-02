@@ -31,9 +31,9 @@ import webbrowser
 def get_completion_url():
     try:
         return st.secrets.get("COMPLETION_URL", None) or os.getenv(
-            "COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=C52ZL66G"
+            "COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=CIR2NCAF"
     except Exception:
-        return os.getenv("COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=C52ZL66G"
+        return os.getenv("COMPLETION_URL") or "https://app.prolific.com/submissions/complete?cc=CIR2NCAF"
 
 
 # ====== 实验阶段机位：'pid' -> 'instructions' -> 'experiment' -> 'survey' ======
