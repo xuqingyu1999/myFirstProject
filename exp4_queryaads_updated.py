@@ -50,8 +50,8 @@ def get_credentials_from_secrets():
     return creds_dict
 
 
-DEFAULT_SPREADSHEET_AI = "Querya EXP4 AI"
-DEFAULT_SPREADSHEET_SE = "Querya EXP4 SE"
+DEFAULT_SPREADSHEET_AI = "Querya EXP5 AI"
+DEFAULT_SPREADSHEET_SE = "Querya EXP5 SE"
 
 
 def _resolve_spreadsheet_handle(client, *, variant=None):
