@@ -1107,7 +1107,7 @@ def render_final_survey_page():
             )
 
             st.markdown(
-                f"**In the past 7 days, on how many days did you use {('AI chatbots' if is_ai else 'search engines')}? 0 = 0 days; 1 = 1 day; 2 = 2 days; 3 = 3 days; 4 = 4 days; 5 = 5 days; 6 = 6 day; 7 = 7 days**"
+                f"**In the past 7 days, on how many days did you use {('AI chatbots' if is_ai else 'search engines')}? (0 = 0 days; 1 = 1 day; 2 = 2 days; 3 = 3 days; 4 = 4 days; 5 = 5 days; 6 = 6 day; 7 = 7 days)**"
             )
             days_used = st.radio(
                 label="",
