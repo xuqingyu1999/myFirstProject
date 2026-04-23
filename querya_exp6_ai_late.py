@@ -23,25 +23,32 @@ GSHEET_NAME = 'Querya EXP6 AI Late'
 PAGE_TITLE = 'Querya Rec'
 
 INSTRUCTIONS_MD = """
-### Instructions
+### 📝 Instructions
 
-Imagine that you have already decided to purchase a fish oil supplement and are now comparing available options before making your final selection.
+Imagine that you have already decided to purchase a **fish oil supplement** and are now comparing available options before making your final selection.
 
-At this stage, your goal is to evaluate specific products, compare their features, and decide which one to buy.
+At this stage, your goal is to **evaluate specific products, compare their features, and decide which one to buy**.
 
-To help you with this, you will use an AI chatbot (“Querya”).
+To help you with this, you will use an **AI chatbot** (?Querya?).
 
-Please follow these steps:
+---
 
-1. Click the Next / Start button below to open the AI chatbot.
-2. You type a question like the following:
-   - “Can you recommend the best fish oil supplements?”
-   - “What are the best fish oil supplements I can buy?”
+**Please follow these steps:**
+
+1. **Click the `Next / Start` button** below to open the AI chatbot.
+
+2. **You type a question like the following:**
+   - ?Can you recommend the best fish oil supplements??
+   - ?What are the best fish oil supplements I can buy??
 
    You can also use any similar phrasing you would naturally use when chatting with an assistant, as long as your question focuses on identifying and comparing specific fish oil supplement options to decide which one to choose.
-3. Treat this task as if you were genuinely exploring this question for yourself. Feel free to review the responses, just as you would in real life.
-4. When you’re done browsing, close the AI chatbot by selecting Finish / End Session in the top-right corner of the conversation page.
-5. Finally, complete a short questionnaire about your experience.
+
+3. **Treat this task as if you were genuinely exploring this question for yourself.**
+   Feel free to review the responses, just as you would in real life.
+
+4. When you?re done browsing, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.
+
+5. **Finally**, complete a short questionnaire about your experience.
 """
 
 SUGGESTED_QUERIES = ['Can you recommend the best fish oil supplements?',
