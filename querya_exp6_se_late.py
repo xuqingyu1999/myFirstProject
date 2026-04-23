@@ -593,7 +593,7 @@ def render_instructions_page():
         st.session_state.instructions_start_ts = time.time()
     elapsed = int(time.time() - st.session_state.instructions_start_ts)
     remaining = max(0, hold_seconds - elapsed)
-    st.caption(f"Minimum reading time: {hold_seconds}s ")
+    st.caption(f"Minimum reading time: {hold_seconds}s | Time elapsed: {elapsed}s | Remaining: {remaining}s")
     if st.button("Next / Start"):
         if remaining > 0:
             st.error(f"Please read the instructions for at least {hold_seconds} seconds before proceeding. {remaining}s remaining.")
