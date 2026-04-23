@@ -23,7 +23,7 @@ GSHEET_NAME = "Querya EXP6 AI Early"
 PAGE_TITLE = "Querya Rec"
 
 INSTRUCTIONS_MD = """
-### ?? Instructions
+### 📝Instructions
 
 Imagine that you are considering whether a **fish oil supplement** may be a good option for you, but you have not yet decided whether you want to purchase one.
 
