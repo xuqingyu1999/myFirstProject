@@ -23,25 +23,32 @@ GSHEET_NAME = 'Querya EXP6 SE Late'
 PAGE_TITLE = 'Querya search'
 
 INSTRUCTIONS_MD = """
-### Instructions
+### 📝 Instructions
 
-Imagine that you have already decided to purchase a fish oil supplement and are now comparing available options before making your final selection.
+Imagine that you have already decided to purchase a **fish oil supplement** and are now comparing available options before making your final selection.
 
-At this stage, your goal is to evaluate specific products, compare their features, and decide which one to buy.
+At this stage, your goal is to **evaluate specific products, compare their features, and decide which one to buy**.
 
-To help you with this, you will use a search engine (“Querya”) to look up information.
+To help you with this, you will use a **search engine** (?Querya?) to look up information.
 
-Please follow these steps:
+---
 
-1. Click the Next / Start button below to open the search engine.
-2. You enter a search like the following:
-   - “fish oil supplement recommendations”
-   - “best fish oil supplements”
+**Please follow these steps:**
+
+1. **Click the `Next / Start` button** below to open the search engine.
+
+2. **You enter a search like the following:**
+   - ?fish oil supplement recommendations?
+   - ?best fish oil supplements?
 
    You can also use similar phrasing you would naturally use when searching online, as long as your search focuses on identifying and comparing specific fish oil supplement options to decide which one to choose.
-3. Treat this task as if you were genuinely exploring this question for yourself. Feel free to review the responses, just as you would in real life.
-4. When you’re done browsing, close the search page by selecting Finish / End Session.
-5. Finally, complete a short questionnaire about your experience.
+
+3. **Treat this task as if you were genuinely exploring this question for yourself.**
+   Feel free to review the responses, just as you would in real life.
+
+4. When you?re done browsing, close the search page by selecting **`Finish / End Session`**.
+
+5. **Finally**, complete a short questionnaire about your experience.
 """
 
 SUGGESTED_QUERIES = ['fish oil supplement recommendations',
