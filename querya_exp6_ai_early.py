@@ -23,13 +23,13 @@ GSHEET_NAME = "Querya EXP6 AI Early"
 PAGE_TITLE = "Querya Rec"
 
 INSTRUCTIONS_MD = """
-### 📝Instructions
+### 📝 Instructions
 
 Imagine that you are considering whether a **fish oil supplement** may be a good option for you, but you have not yet decided whether you want to purchase one.
 
 At this stage, your goal is to **better understand fish oil and whether it would be suitable for your needs**. You are primarily looking for objective, helpful guidance to inform your decision, rather than trying to choose among specific products or make a purchase.
 
-To help you with this, you will use an **AI chatbot** (?Querya?).
+To help you with this, you will use an **AI chatbot** ('Querya').
 
 ---
 
@@ -38,15 +38,15 @@ To help you with this, you will use an **AI chatbot** (?Querya?).
 1. **Click the `Next / Start` button** below to open the AI chatbot.
 
 2. **You type a question like the following:**
-   - ?Should I take fish oil supplements??
-   - ?Are fish oil supplements a good option for me??
+   - 'Should I take fish oil supplements?'
+   - 'Are fish oil supplements a good option for me?'
 
    You can also use any similar phrasing you would naturally use when chatting with an assistant, as long as your question focuses on understanding whether fish oil supplements would be suitable for you.
 
 3. **Treat this task as if you were genuinely exploring this question for yourself.**
    Feel free to review the responses, just as you would in real life.
 
-4. When you?re done browsing, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.
+4. When you're done browsing, close the AI chatbot by selecting **`Finish / End Session`** in the top-right corner of the conversation page.
 
 5. **Finally**, complete a short questionnaire about your experience.
 """
