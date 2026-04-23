@@ -23,25 +23,32 @@ GSHEET_NAME = 'Querya EXP6 SE Early'
 PAGE_TITLE = 'Querya search'
 
 INSTRUCTIONS_MD = """
-### Instructions
+### 📝 Instructions
 
-Imagine that you are considering whether a fish oil supplement may be a good option for you, but you have not yet decided whether you want to purchase one.
+Imagine that you are considering whether a **fish oil supplement** may be a good option for you, but you have not yet decided whether you want to purchase one.
 
-At this stage, your goal is to better understand fish oil and whether it would be suitable for your needs. You are primarily looking for objective, helpful guidance to inform your decision, rather than trying to choose among specific products or make a purchase.
+At this stage, your goal is to **better understand fish oil and whether it would be suitable for your needs**. You are primarily looking for objective, helpful guidance to inform your decision, rather than trying to choose among specific products or make a purchase.
 
-To help you with this, you will use a search engine (“Querya”) to look up information.
+To help you with this, you will use a **search engine** (?Querya?) to look up information.
 
-Please follow these steps:
+---
 
-1. Click the Next / Start button below to open the search engine.
-2. You enter a search like the following:
-   - “should I take fish oil supplements”
-   - “are fish oil supplements a good option”
+**Please follow these steps:**
+
+1. **Click the `Next / Start` button** below to open the search engine.
+
+2. **You enter a search like the following:**
+   - ?should I take fish oil supplements?
+   - ?are fish oil supplements a good option?
 
    You can also use similar phrasing you would naturally use when searching online, as long as your search focuses on understanding whether fish oil supplements would be suitable for you.
-3. Treat this task as if you were genuinely exploring this question for yourself. Feel free to review the responses, just as you would in real life.
-4. When you’re done browsing, close the search page by selecting Finish / End Session.
-5. Finally, complete a short questionnaire about your experience.
+
+3. **Treat this task as if you were genuinely exploring this question for yourself.**
+   Feel free to review the responses, just as you would in real life.
+
+4. When you?re done browsing, close the search page by selecting **`Finish / End Session`**.
+
+5. **Finally**, complete a short questionnaire about your experience.
 """
 
 SUGGESTED_QUERIES = ['should I take fish oil supplements',
