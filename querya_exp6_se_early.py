@@ -29,7 +29,7 @@ Imagine that you are considering whether a **fish oil supplement** may be a good
 
 At this stage, your goal is to **better understand fish oil and whether it would be suitable for your needs**. You are primarily looking for objective, helpful guidance to inform your decision, rather than trying to choose among specific products or make a purchase.
 
-To help you with this, you will use a **search engine** (?Querya?) to look up information.
+To help you with this, you will use a **search engine** ('Querya') to look up information.
 
 ---
 
@@ -38,15 +38,15 @@ To help you with this, you will use a **search engine** (?Querya?) to look up in
 1. **Click the `Next / Start` button** below to open the search engine.
 
 2. **You enter a search like the following:**
-   - ?should I take fish oil supplements?
-   - ?are fish oil supplements a good option?
+   - 'should I take fish oil supplements'
+   - 'are fish oil supplements a good option'
 
    You can also use similar phrasing you would naturally use when searching online, as long as your search focuses on understanding whether fish oil supplements would be suitable for you.
 
 3. **Treat this task as if you were genuinely exploring this question for yourself.**
    Feel free to review the responses, just as you would in real life.
 
-4. When you?re done browsing, close the search page by selecting **`Finish / End Session`**.
+4. When you're done browsing, close the search page by selecting **`Finish / End Session`**.
 
 5. **Finally**, complete a short questionnaire about your experience.
 """
