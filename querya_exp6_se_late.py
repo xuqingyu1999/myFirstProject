@@ -12,6 +12,7 @@ from pathlib import Path
 
 import gspread
 import streamlit as st
+import streamlit.components.v1 as components
 from oauth2client.service_account import ServiceAccountCredentials
 
 
@@ -593,7 +594,29 @@ def render_instructions_page():
         st.session_state.instructions_start_ts = time.time()
     elapsed = int(time.time() - st.session_state.instructions_start_ts)
     remaining = max(0, hold_seconds - elapsed)
-    st.caption(f"Minimum reading time: {hold_seconds}s | Time elapsed: {elapsed}s | Remaining: {remaining}s")
+    components.html(
+        f"""
+        <div style="font-size:0.875rem;color:rgba(49,51,63,0.65);line-height:1.4;">
+          Minimum reading time: {hold_seconds}s | Time elapsed: <span id="elapsed">{elapsed}</span>s |
+          Remaining: <span id="remaining">{remaining}</span>s
+        </div>
+        <script>
+          const start = {float(st.session_state.instructions_start_ts)};
+          const hold = {hold_seconds};
+          function tick() {{
+            const elapsed = Math.floor(Date.now() / 1000 - start);
+            const remaining = Math.max(0, hold - elapsed);
+            document.getElementById("elapsed").textContent = elapsed;
+            document.getElementById("remaining").textContent = remaining;
+            if (remaining > 0) {{
+              setTimeout(tick, 1000);
+            }}
+          }}
+          tick();
+        </script>
+        """,
+        height=28,
+    )
     if st.button("Next / Start"):
         if remaining > 0:
             st.error(f"Please read the instructions for at least {hold_seconds} seconds before proceeding. {remaining}s remaining.")
