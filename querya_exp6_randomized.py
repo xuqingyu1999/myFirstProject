@@ -86,7 +86,7 @@ CONDITIONS = {
         "gsheet_name": "Querya EXP6 SE Early",
         "page_title": "Querya search",
         "instructions_md": """
-### 馃摑 Instructions
+### 📝 Instructions
 
 Imagine that you are considering whether a **fish oil supplement** may be a good option for you, but you have not yet decided whether you want to purchase one.
 
@@ -129,7 +129,7 @@ To help you with this, you will use a **search engine** ('Querya') to look up in
         "gsheet_name": "Querya EXP6 AI Late",
         "page_title": "Querya Rec",
         "instructions_md": """
-### 馃摑 Instructions
+### 📝 Instructions
 
 Imagine that you have already decided to purchase a **fish oil supplement** and are now comparing available options before making your final selection.
 
@@ -172,7 +172,7 @@ To help you with this, you will use an **AI chatbot** ('Querya').
         "gsheet_name": "Querya EXP6 SE Late",
         "page_title": "Querya search",
         "instructions_md": """
-### 馃摑 Instructions
+### 📝 Instructions
 
 Imagine that you have already decided to purchase a **fish oil supplement** and are now comparing available options before making your final selection.
 
