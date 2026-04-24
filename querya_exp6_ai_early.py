@@ -553,6 +553,14 @@ def render_product_page():
     with col_img:
         if p.get("image_url"):
             st.image(p["image_url"], use_container_width=True)
+            st.markdown(
+                """
+                <style>
+                  img:nth-last-of-type(1) { max-height: 360px; object-fit: contain; }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
     with col_info:
         if p.get("page_description"):
             with st.expander("About this item", expanded=True):
