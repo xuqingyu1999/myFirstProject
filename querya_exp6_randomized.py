@@ -642,6 +642,52 @@ SPEC_TABLE_CSS = """
 """
 st.markdown(SPEC_TABLE_CSS, unsafe_allow_html=True)
 
+AI_FOLLOWUP_COMPOSER_CSS = """
+<style>
+div:has(> #ai-followup-composer-anchor) {
+    border: 1px solid rgba(49, 51, 63, 0.18) !important;
+    border-radius: 18px !important;
+    padding: 10px 12px !important;
+    background: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+div:has(> #ai-followup-composer-anchor) form {
+    margin-bottom: 0 !important;
+}
+div:has(> #ai-followup-composer-anchor) [data-testid="stTextInput"] {
+    margin-bottom: 0 !important;
+}
+div:has(> #ai-followup-composer-anchor) [data-baseweb="input"] {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+div:has(> #ai-followup-composer-anchor) [data-baseweb="base-input"] {
+    background: transparent !important;
+}
+div:has(> #ai-followup-composer-anchor) input {
+    font-size: 16px !important;
+    background: transparent !important;
+}
+div:has(> #ai-followup-composer-anchor) [data-testid="stFormSubmitButton"] button {
+    background: #111827 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 9999px !important;
+    min-height: 40px !important;
+    padding: 0 16px !important;
+    text-decoration: none !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+div:has(> #ai-followup-composer-anchor) [data-testid="stFormSubmitButton"] button:hover {
+    background: #0f172a !important;
+    color: #ffffff !important;
+}
+</style>
+"""
+st.markdown(AI_FOLLOWUP_COMPOSER_CSS, unsafe_allow_html=True)
+
 st.markdown(
     """
     <style>
@@ -986,14 +1032,14 @@ def render_ai_experiment():
                 st.info("Thanks! For this study, you only need to enter one query. Please click Finish / End Session in the top-right corner to proceed to the survey.")
 
         st.write("---")
-        with st.container(border=True):
-            st.caption("Message Querya")
+        with st.container():
+            st.markdown("<div id='ai-followup-composer-anchor'></div>", unsafe_allow_html=True)
             with st.form("ai_followup_form", clear_on_submit=True):
                 input_col, send_col = st.columns([6, 1])
                 with input_col:
                     followup_text = st.text_input(
                         "",
-                        placeholder="Type a message...",
+                        placeholder="Only one query is needed for this study. Click 'Finish / End Session' when ready.",
                         key="ai_followup_input",
                         label_visibility="collapsed",
                     )
