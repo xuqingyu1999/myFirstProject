@@ -946,27 +946,65 @@ def submit_first_query(query):
         return
     st.session_state.first_message_submitted = True
     st.session_state.first_query_text = query
+    st.session_state.last_extra_query_attempt = ""
+    st.session_state.show_extra_query_feedback = False
+    st.session_state.ai_followup_error = ""
     log_event("first_query", query)
     request_scroll_to_top()
     st.rerun()
 
 
+def submit_ai_followup_attempt(query):
+    query = (query or "").strip()
+    if not query:
+        st.session_state.ai_followup_error = "Please enter a message before sending."
+        return False
+
+    st.session_state.ai_followup_error = ""
+    st.session_state.last_extra_query_attempt = query
+    st.session_state.show_extra_query_feedback = True
+    log_event("extra_query_attempt", query[:200])
+    return True
+
+
 def render_ai_experiment():
     suggested_queries = current_condition()["suggested_queries"]
     render_header()
-    emit_scroll_to_top_if_requested(consume=False, placement="ai_header")
     st.session_state.setdefault("first_message_submitted", False)
     st.session_state.setdefault("first_query_text", "")
+    st.session_state.setdefault("last_extra_query_attempt", "")
+    st.session_state.setdefault("show_extra_query_feedback", False)
+    st.session_state.setdefault("ai_followup_error", "")
     if st.session_state.first_message_submitted:
         st.chat_message("user").write(st.session_state.first_query_text)
         with st.chat_message("assistant"):
             render_product_results()
-        user_input = st.chat_input("Only one query is needed for this study. Click 'Finish / End Session' when ready.")
-        if user_input:
-            st.chat_message("user").write(user_input)
-            log_event("extra_query_attempt", user_input[:200])
+
+        if st.session_state.get("show_extra_query_feedback") and st.session_state.get("last_extra_query_attempt"):
+            st.chat_message("user").write(st.session_state.last_extra_query_attempt)
             with st.chat_message("assistant"):
                 st.info("Thanks! For this study, you only need to enter one query. Please click Finish / End Session in the top-right corner to proceed to the survey.")
+
+        st.write("---")
+        with st.container(border=True):
+            st.caption("Message Querya")
+            with st.form("ai_followup_form", clear_on_submit=True):
+                input_col, send_col = st.columns([6, 1])
+                with input_col:
+                    followup_text = st.text_input(
+                        "",
+                        placeholder="Type a message...",
+                        key="ai_followup_input",
+                        label_visibility="collapsed",
+                    )
+                with send_col:
+                    submitted = st.form_submit_button("Send", use_container_width=True)
+
+            if submitted and submit_ai_followup_attempt(followup_text):
+                st.rerun()
+
+            if st.session_state.get("ai_followup_error"):
+                st.error(st.session_state.ai_followup_error)
         return
 
     render_logo()
