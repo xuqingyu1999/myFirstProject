@@ -692,24 +692,32 @@ def request_scroll_to_top():
     st.session_state["_scroll_top_nonce"] = int(st.session_state.get("_scroll_top_nonce", 0)) + 1
 
 
-def emit_scroll_to_top_if_requested():
+def emit_scroll_to_top_if_requested(*, consume=True, placement="main"):
     nonce = int(st.session_state.get("_scroll_top_nonce", 0))
     emitted = int(st.session_state.get("_scroll_top_emitted_nonce", 0))
     if nonce <= emitted:
         return
 
-    st.session_state["_scroll_top_emitted_nonce"] = nonce
+    if consume:
+        st.session_state["_scroll_top_emitted_nonce"] = nonce
     components.html(
         f"""
-        <div data-scroll-top-nonce="{nonce}" style="height:0;overflow:hidden;"></div>
+        <div data-scroll-top-nonce="{nonce}" data-scroll-top-placement="{placement}" style="height:0;overflow:hidden;"></div>
         <script>
           const scrollTop = () => {{
             try {{
               window.parent.scrollTo(0, 0);
             }} catch (e) {{}}
             try {{
-              const main = window.parent.document.querySelector("section.main");
-              if (main) {{
+              const doc = window.parent.document;
+              const mainCandidates = [
+                "section.main",
+                "section[data-testid='stMain']",
+                "[data-testid='stAppViewContainer']",
+              ];
+              for (const selector of mainCandidates) {{
+                const main = doc.querySelector(selector);
+                if (!main) continue;
                 if (typeof main.scrollTo === "function") {{
                   main.scrollTo({{ top: 0, behavior: "auto" }});
                 }} else {{
@@ -720,8 +728,10 @@ def emit_scroll_to_top_if_requested():
             try {{
               const doc = window.parent.document.documentElement;
               const body = window.parent.document.body;
+              const scrolling = window.parent.document.scrollingElement;
               if (doc) doc.scrollTop = 0;
               if (body) body.scrollTop = 0;
+              if (scrolling) scrolling.scrollTop = 0;
             }} catch (e) {{}}
           }};
           scrollTop();
@@ -729,6 +739,8 @@ def emit_scroll_to_top_if_requested():
           setTimeout(scrollTop, 0);
           setTimeout(scrollTop, 80);
           setTimeout(scrollTop, 220);
+          setTimeout(scrollTop, 500);
+          setTimeout(scrollTop, 1000);
         </script>
         """,
         height=0,
@@ -942,6 +954,7 @@ def submit_first_query(query):
 def render_ai_experiment():
     suggested_queries = current_condition()["suggested_queries"]
     render_header()
+    emit_scroll_to_top_if_requested(consume=False, placement="ai_header")
     st.session_state.setdefault("first_message_submitted", False)
     st.session_state.setdefault("first_query_text", "")
     if st.session_state.first_message_submitted:
@@ -1164,23 +1177,27 @@ def render_pid_page():
 
 
 def main():
-    emit_scroll_to_top_if_requested()
     if st.session_state.stage == "pid":
         render_pid_page()
+        emit_scroll_to_top_if_requested()
         st.stop()
     if st.session_state.stage == "instructions":
         render_instructions_page()
+        emit_scroll_to_top_if_requested()
         st.stop()
     if st.session_state.stage == "survey":
         render_final_survey_page()
+        emit_scroll_to_top_if_requested()
         st.stop()
     if st.session_state.page == "product" and st.session_state.current_product:
         render_product_page()
+        emit_scroll_to_top_if_requested()
         return
     if current_condition()["system_type"] == "ai":
         render_ai_experiment()
     else:
         render_search_experiment()
+    emit_scroll_to_top_if_requested()
 
 
 if __name__ == "__main__":
