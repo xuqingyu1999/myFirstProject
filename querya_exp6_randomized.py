@@ -539,6 +539,8 @@ st.session_state.setdefault("page", "main")
 st.session_state.setdefault("current_product", {})
 st.session_state.setdefault("current_product_type", "")
 st.session_state.setdefault("completed", False)
+st.session_state.setdefault("_scroll_top_nonce", 0)
+st.session_state.setdefault("_scroll_top_emitted_nonce", 0)
 ensure_variant_stable()
 st.session_state["variant"] = current_condition_code()
 
@@ -686,6 +688,53 @@ def render_logo():
         pass
 
 
+def request_scroll_to_top():
+    st.session_state["_scroll_top_nonce"] = int(st.session_state.get("_scroll_top_nonce", 0)) + 1
+
+
+def emit_scroll_to_top_if_requested():
+    nonce = int(st.session_state.get("_scroll_top_nonce", 0))
+    emitted = int(st.session_state.get("_scroll_top_emitted_nonce", 0))
+    if nonce <= emitted:
+        return
+
+    st.session_state["_scroll_top_emitted_nonce"] = nonce
+    components.html(
+        f"""
+        <div data-scroll-top-nonce="{nonce}" style="height:0;overflow:hidden;"></div>
+        <script>
+          const scrollTop = () => {{
+            try {{
+              window.parent.scrollTo(0, 0);
+            }} catch (e) {{}}
+            try {{
+              const main = window.parent.document.querySelector("section.main");
+              if (main) {{
+                if (typeof main.scrollTo === "function") {{
+                  main.scrollTo({{ top: 0, behavior: "auto" }});
+                }} else {{
+                  main.scrollTop = 0;
+                }}
+              }}
+            }} catch (e) {{}}
+            try {{
+              const doc = window.parent.document.documentElement;
+              const body = window.parent.document.body;
+              if (doc) doc.scrollTop = 0;
+              if (body) body.scrollTop = 0;
+            }} catch (e) {{}}
+          }};
+          scrollTop();
+          requestAnimationFrame(scrollTop);
+          setTimeout(scrollTop, 0);
+          setTimeout(scrollTop, 80);
+          setTimeout(scrollTop, 220);
+        </script>
+        """,
+        height=0,
+    )
+
+
 def show_product_item(p, *, link_type="organic", show_image=False, orientation="horizontal", image_position="none"):
     if orientation == "vertical" and show_image and p.get("image_url"):
         st.markdown(
@@ -708,6 +757,7 @@ def show_product_item(p, *, link_type="organic", show_image=False, orientation="
             }
         )
         st.session_state.update({"page": "product", "current_product": p, "current_product_type": link_type})
+        request_scroll_to_top()
         st.rerun()
 
     if show_image and image_position == "below" and p.get("image_url"):
@@ -772,6 +822,7 @@ def back_to_main():
     )
     time.sleep(0.5)
     st.session_state.update({"page": "main", "current_product": {}, "current_product_type": ""})
+    request_scroll_to_top()
 
 
 def render_product_page():
@@ -829,6 +880,7 @@ def render_header():
     with col2:
         if st.button("Finish / End Session", key="finish_button_inline"):
             log_event("finish_click", "Finish / End Session")
+            request_scroll_to_top()
             st.session_state.stage = "survey"
             st.rerun()
 
@@ -870,6 +922,7 @@ def render_instructions_page():
             log_event("instructions_next_too_early", f"{cfg['condition_label']} | remaining={remaining}s")
             return
         log_event("enter_experiment", cfg["condition_label"])
+        request_scroll_to_top()
         st.session_state.stage = "experiment"
         st.rerun()
 
@@ -882,6 +935,7 @@ def submit_first_query(query):
     st.session_state.first_message_submitted = True
     st.session_state.first_query_text = query
     log_event("first_query", query)
+    request_scroll_to_top()
     st.rerun()
 
 
@@ -920,6 +974,7 @@ def run_search(query):
     st.session_state.search_started = True
     st.session_state.search_query_text = query
     log_event("search_submit", query)
+    request_scroll_to_top()
     st.rerun()
 
 
@@ -1103,11 +1158,13 @@ def render_pid_page():
         st.session_state.prolific_id = pid.strip()
         log_event("pid_entered", "pid_ok")
         log_event("condition_assigned", cfg["condition_label"])
+        request_scroll_to_top()
         st.session_state.stage = "instructions"
         st.rerun()
 
 
 def main():
+    emit_scroll_to_top_if_requested()
     if st.session_state.stage == "pid":
         render_pid_page()
         st.stop()
