@@ -187,8 +187,8 @@ To help you with this, you will use a **search engine** ('Querya') to look up in
 1. **Click the `Next / Start` button** below to open the search engine.
 
 2. **You enter a search like the following:**
-   - 'fish oil supplement recommendations?'
-   - 'best fish oil supplements?'
+   - 'fish oil supplement recommendations'
+   - 'best fish oil supplements'
 
    You can also use similar phrasing you would naturally use when searching online, as long as your search focuses on identifying and comparing specific fish oil supplement options to decide which one to choose.
 
@@ -1146,6 +1146,14 @@ def render_final_survey_page():
             key="mc_ads",
             label_visibility="collapsed",
         )
+        st.markdown("**please select 2**")
+        mc_attention = st.radio(
+            "",
+            options=[str(i) for i in range(1, 8)],
+            index=None,
+            key="mc_attention",
+            label_visibility="collapsed",
+        )
         st.markdown("---")
         st.markdown("**Your age:**")
         age_str = st.text_input("", value="", key="demo_age", placeholder="Enter an integer between 18 and 99", label_visibility="collapsed")
@@ -1188,6 +1196,7 @@ def render_final_survey_page():
         "goal": mc_goal,
         "system": mc_system,
         "ads": mc_ads,
+        "attention_check": mc_attention,
         "sex": sex,
         "education": edu,
         "ethnicity": ethnicity,
@@ -1209,6 +1218,7 @@ def render_final_survey_page():
             "goal": mc_goal,
             "system_used": mc_system,
             "noticed_sponsored": mc_ads,
+            "attention_check": mc_attention,
         },
         "demographics": {
             "age": age_val,
