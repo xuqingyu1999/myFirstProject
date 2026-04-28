@@ -1153,6 +1153,7 @@ def render_final_survey_page():
             index=None,
             key="mc_attention",
             label_visibility="collapsed",
+            horizontal=True,
         )
         st.markdown("---")
         st.markdown("**Your age:**")
