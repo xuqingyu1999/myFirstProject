@@ -2857,7 +2857,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_02",
         "title": "SOUNDPEATS Clear Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B0CJV9ZDLK",
-        "image_url": "https://m.media-amazon.com/images/I/61nQKt7a7EL._AC_SL1500_.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/31eymoaiEIL._AC_CX679_.jpg",
         "price": "$29.99",
         "specs": {
             "Brand": "SOUNDPEATS",
@@ -2875,7 +2875,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_03",
         "title": "EarFun Free 2S Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B0BF4XGC1K",
-        "image_url": "https://m.media-amazon.com/images/I/61PnHlc0H1L._AC_SL1500_.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/419f26NHa0L._SL500_.jpg",
         "price": "$39.99",
         "specs": {
             "Brand": "EarFun",
@@ -2893,7 +2893,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_04",
         "title": "JLab Go Air Pop True Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B09HN594TL",
-        "image_url": "https://m.media-amazon.com/images/I/61U1SDjzSUL._AC_SL1500_.jpg",
+        "image_url": "https://www.jlab.com/cdn/shop/files/JLab-GO-Air-Pop-True-Wireless-Earbuds-Black-Front_3ce6e2a3-5174-4bad-a377-4fae954af28a.jpg?v=1762446369",
         "price": "$24.99",
         "specs": {
             "Brand": "JLab",
@@ -2911,7 +2911,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_05",
         "title": "Baseus Bowie MA10 Wireless Earbuds",
         "product_url": "https://www.amazon.com/s?k=Baseus+Bowie+MA10+Wireless+Earbuds",
-        "image_url": "https://m.media-amazon.com/images/I/61YUDWqB+QL._AC_SL1500_.jpg",
+        "image_url": "https://www.baseus.com/cdn/shop/files/Baseus_Bowie_MA10_TWS_Wireless_Earbuds_1.jpg?v=1682647706",
         "price": "$29.99",
         "specs": {
             "Brand": "Baseus",
@@ -2932,7 +2932,7 @@ SPONSORED_EARBUD_PRODUCTS = [
         "id": "earbuds_ad_01",
         "title": "TAGRY X08 True Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B09DT48V16",
-        "image_url": "https://m.media-amazon.com/images/I/61Jbsr5mVtL._AC_SL1500_.jpg",
+        "image_url": "https://tagrystore.com/cdn/shop/files/8_41ffd5b9-7fa2-4695-8f10-f646d338363b.png?v=1776242235",
         "price": "$35.99",
         "specs": {
             "Brand": "TAGRY",
@@ -2951,7 +2951,7 @@ SPONSORED_EARBUD_PRODUCTS = [
         "id": "earbuds_ad_02",
         "title": "PocBuds 80H Bluetooth Headphones",
         "product_url": "https://www.amazon.com/dp/B0C3W4MNN1",
-        "image_url": "https://m.media-amazon.com/images/I/71q7xb2i9bL._AC_SL1500_.jpg",
+        "image_url": "https://wisdomseller-1258771466.cos.na-ashburn.myqcloud.com/7378bccd238b12401676235d30af3879.jpg",
         "price": "$49.99",
         "specs": {
             "Brand": "PocBuds",
@@ -2970,7 +2970,7 @@ SPONSORED_EARBUD_PRODUCTS = [
         "id": "earbuds_ad_03",
         "title": "BMANI T16 Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B09FLNSYDZ",
-        "image_url": "https://m.media-amazon.com/images/I/71Yx6J2OaIL._AC_SL1500_.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/41kYmsfm90L._SL500_.jpg",
         "price": "$25.98",
         "specs": {
             "Brand": "BMANI",
@@ -2989,7 +2989,7 @@ SPONSORED_EARBUD_PRODUCTS = [
         "id": "earbuds_ad_04",
         "title": "CAPOXO 120H Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B0C6TTG88V",
-        "image_url": "https://m.media-amazon.com/images/I/71-3q9C2lCL._AC_SL1500_.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/41MQ94XYlML._AC_SL1500_.jpg",
         "price": "$39.99",
         "specs": {
             "Brand": "CAPOXO",
@@ -3008,7 +3008,7 @@ SPONSORED_EARBUD_PRODUCTS = [
         "id": "earbuds_ad_05",
         "title": "Kurdene Wireless Earbuds Bluetooth 5.3",
         "product_url": "https://www.amazon.com/dp/B0D635YLCT",
-        "image_url": "https://m.media-amazon.com/images/I/61tw1xZlkQL._AC_SL1500_.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/715fNrGN%2BML._AC_SL1500_.jpg",
         "price": "$19.99",
         "specs": {
             "Brand": "Kurdene",
@@ -3105,7 +3105,26 @@ def render_instructions_page():
 
     elapsed = int(time.time() - st.session_state.instructions_start_ts)
     remaining = max(0, HOLD_SECONDS - elapsed)
-    st.caption(f"Minimum reading time: {HOLD_SECONDS}s ")
+    target_ms = int((st.session_state.instructions_start_ts + HOLD_SECONDS) * 1000)
+    components.html(
+        f"""
+        <div style="font-family:system-ui, -apple-system, Segoe UI, sans-serif; font-size:14px; color:#475569;">
+          Minimum reading time: <strong>{HOLD_SECONDS}s</strong>
+          <span style="margin-left:10px;">Remaining: <strong id="instruction-countdown">{remaining}</strong>s</span>
+        </div>
+        <script>
+        const target = {target_ms};
+        const el = document.getElementById("instruction-countdown");
+        function tick() {{
+          const remaining = Math.max(0, Math.ceil((target - Date.now()) / 1000));
+          el.textContent = remaining;
+        }}
+        tick();
+        setInterval(tick, 250);
+        </script>
+        """,
+        height=36,
+    )
 
     next_clicked = st.button("Next")
     if next_clicked:
@@ -3326,6 +3345,233 @@ def show_deepseek_recommendation(with_ads: bool):
     })
     with st.chat_message("assistant"):
         st.info("Thanks! For this study, you only need to enter **one** query. Please click **Finish / End Session** (top right) to proceed to the survey.")
+
+
+def render_final_survey_page():
+    """Final survey for the earbuds experiment: manipulation, communal, attention, demographics."""
+    if st.session_state.get("survey_locked"):
+        st.title("Final Survey - Completed")
+        st.success("Thanks! Your responses have already been submitted.")
+        target = st.session_state.get("completion_url") or get_completion_url()
+        try:
+            st.link_button("Open the completion page", target)
+        except Exception:
+            st.markdown(f"[Open the completion page]({target})")
+        st.caption("You can now close this tab.")
+        st.stop()
+
+    v, is_ai, with_ads, group_label = get_variant_flags()
+    st.title("Final Survey")
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stRadio"] > div { gap: 0.5rem !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    def is_blank(x) -> bool:
+        return x is None or (isinstance(x, str) and x.strip() == "")
+
+    def matrix_block(stem: str, items: list[tuple[str, str]], keyprefix: str) -> dict:
+        st.markdown(f"**{stem}**")
+        results = {}
+        for k, q in items:
+            st.markdown(f"**{q}**")
+            results[k] = st.radio(
+                "",
+                options=[1, 2, 3, 4, 5, 6, 7],
+                horizontal=True,
+                index=None,
+                key=f"{keyprefix}_{k}",
+                label_visibility="collapsed",
+            )
+        st.markdown("---")
+        return results
+
+    with st.form("final_survey_earbuds_compact"):
+        st.markdown("Please complete **all** questions. There is no default selection.")
+
+        st.markdown("**1. What did you use to seek recommended products in this study?**")
+        mc_tool = st.radio(
+            "",
+            options=["An AI chatbot", "A search engine"],
+            index=None,
+            key="p3_mc_tool",
+            label_visibility="collapsed",
+        )
+
+        st.markdown("**2. Did you see any sponsored products (i.e., advertisements) in the page presenting recommended products in this study?**")
+        mc_ads = st.radio(
+            "",
+            options=["Yes", "No"],
+            index=None,
+            key="p3_mc_ads",
+            label_visibility="collapsed",
+        )
+        st.markdown("---")
+
+        ce_items = [
+            ("ce1", "Communal <-> Commercial"),
+            ("ce2", "Relationship-based <-> Transaction-based"),
+            ("ce3", "Helping-oriented <-> Profit-oriented"),
+            ("ce4", "Care-focused <-> Exchange-focused"),
+        ]
+        communal = matrix_block(
+            "Thinking about AI chatbots overall, how would you characterize the nature of the relationship between users and AI chatbots? Please rate the relationship on the following scales: (1 = closer to the left description, 7 = closer to the right description)",
+            ce_items,
+            "p2_ce",
+        )
+
+        st.markdown("**Attention check: Please select two.**")
+        att_check = st.radio(
+            "",
+            options=[1, 2, 3, 4, 5, 6, 7],
+            horizontal=True,
+            index=None,
+            key="chk_att",
+            label_visibility="collapsed",
+        )
+        st.markdown("---")
+
+        st.markdown("**Your age:**")
+        age_str = st.text_input(
+            "",
+            value="",
+            key="p3_demo_age",
+            placeholder="Enter an integer between 18 and 99",
+            label_visibility="collapsed",
+        )
+
+        st.markdown("**Your sex:**")
+        sex = st.radio(
+            "",
+            options=["Male", "Female"],
+            index=None,
+            key="p3_demo_sex",
+            label_visibility="collapsed",
+        )
+
+        st.markdown("**Your educational background:**")
+        edu = st.selectbox(
+            "",
+            options=[
+                "Less than high school",
+                "High school graduate",
+                "Bachelor or equivalent",
+                "Master",
+                "Doctorate",
+            ],
+            index=None,
+            placeholder="Select",
+            key="p3_demo_edu",
+            label_visibility="collapsed",
+        )
+
+        st.markdown("**Your ethnicity:**")
+        ethnicity = st.selectbox(
+            "",
+            options=[
+                "White",
+                "Black or African American",
+                "American Indian or Alaska Native",
+                "Asian",
+                "Native Hawaiian or Pacific Islander",
+                "Other",
+            ],
+            index=None,
+            placeholder="Select",
+            key="p3_demo_ethnicity",
+            label_visibility="collapsed",
+        )
+
+        submitted = st.form_submit_button("Submit")
+
+    if not submitted:
+        return
+
+    age_val, age_err = None, None
+    if is_blank(age_str):
+        age_err = "Please enter your age."
+    else:
+        try:
+            age_val = int(str(age_str).strip())
+            if age_val < 18 or age_val > 99:
+                age_err = "Age must be between 18 and 99."
+        except Exception:
+            age_err = "Age must be a whole number."
+
+    required = {
+        "mc_tool": mc_tool,
+        "mc_ads": mc_ads,
+        "attention_check": att_check,
+        "sex": sex,
+        "education": edu,
+        "ethnicity": ethnicity,
+        **communal,
+    }
+    missing = [name for name, val in required.items() if is_blank(val)]
+
+    if age_err or missing:
+        if age_err:
+            st.error(age_err)
+        if missing:
+            st.error("Please complete all required questions before submitting.")
+        return
+
+    if att_check != 2:
+        st.error("Please review the attention check before submitting.")
+        return
+
+    answers = {
+        "variant": st.session_state.get("variant"),
+        "group": "AI",
+        "with_ads": with_ads,
+        "condition_label": group_label,
+        "manipulation_check": {
+            "tool_used": mc_tool,
+            "saw_sponsored": mc_ads,
+        },
+        "perceived_communal_exchange_orientation": communal,
+        "attention_check": att_check,
+        "demographics": {
+            "age": age_val,
+            "sex": sex,
+            "education": edu,
+            "ethnicity": ethnicity,
+        },
+    }
+
+    if not st.session_state.get("survey_locked"):
+        ok = save_to_gsheet({
+            "id": st.session_state.prolific_id,
+            "start": st.session_state.start_time,
+            "timestamp": datetime.now().isoformat(),
+            "type": "survey",
+            "title": "final_survey",
+            "url": json.dumps(answers, ensure_ascii=False),
+        })
+        if not ok:
+            st.error(
+                "We could not record your responses due to a temporary server/network error. "
+                "Please click **Submit** again. (Do not close this tab yet.)"
+            )
+            err_txt = st.session_state.get("_gsheet_last_error", "")
+            if err_txt:
+                st.caption(f"Debug info: {err_txt}")
+            return
+
+    target = get_completion_url()
+    st.session_state["survey_locked"] = True
+    st.session_state["completion_url"] = target
+    st.success("Submitted. Please click below to complete:")
+    try:
+        if st.link_button("Please click here to complete", target):
+            st.session_state.completed = True
+    except Exception:
+        st.markdown(f"[Please click here to complete]({target})")
+    st.stop()
 
 
 ############################################
