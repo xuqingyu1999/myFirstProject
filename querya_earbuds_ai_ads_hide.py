@@ -2223,7 +2223,7 @@ def get_products_by_query(query: str):
 #         return
 #
 #     # Subsequent messages
-#     user_input = st.chat_input("Input message and press enter…")
+#     user_input = ...
 #     if not user_input:
 #         return
 #
@@ -2402,24 +2402,9 @@ def show_deepseek_recommendation(with_ads: bool):
             st.rerun()
         return
 
-    # -------- Block/redirect further chat after the first query --------
-    user_input = st.chat_input("Only one query is needed for this study. Click 'Finish / End Session' when ready.")
-    if not user_input:
-        return
-
-    # Log the attempt and gently remind (no new assistant output)
-    st.chat_message("user").write(user_input)
-    save_to_gsheet({
-        "id": st.session_state.prolific_id,
-        "start": st.session_state.start_time,
-        "timestamp": datetime.now().isoformat(),
-        "type": "extra_query_attempt",
-        "title": user_input[:200],
-        "url": " "
-    })
-    with st.chat_message("assistant"):
-        st.info("Thanks! For this study, you only need to enter **one** query. "
-                "Please click **Finish / End Session** (top right) to proceed to the survey.")
+    # Do not render a bottom chat box after the first query; it steals focus and scrolls down.
+    st.info("Only one query is needed for this study. Click **Finish / End Session** when ready.")
+    return
 
 
 ############################################
@@ -2839,7 +2824,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_01",
         "title": "TOZO A1 Mini Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B09FT58QQP",
-        "image_url": "https://m.media-amazon.com/images/I/61cwywLZR-L._AC_SL1500_.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/41766A8gWtL._SL500_.jpg",
         "price": "$19.99",
         "specs": {
             "Brand": "TOZO",
@@ -2951,7 +2936,7 @@ SPONSORED_EARBUD_PRODUCTS = [
         "id": "earbuds_ad_02",
         "title": "PocBuds 80H Bluetooth Headphones",
         "product_url": "https://www.amazon.com/dp/B0C3W4MNN1",
-        "image_url": "https://wisdomseller-1258771466.cos.na-ashburn.myqcloud.com/7378bccd238b12401676235d30af3879.jpg",
+        "image_url": "https://m.media-amazon.com/images/I/41a13oczERL._AC_.jpg",
         "price": "$49.99",
         "specs": {
             "Brand": "PocBuds",
@@ -3332,19 +3317,8 @@ def show_deepseek_recommendation(with_ads: bool):
             st.rerun()
         return
 
-    user_input = st.chat_input("Only one query is needed for this study. Click 'Finish / End Session' when ready.")
-    if not user_input:
-        return
-    save_to_gsheet({
-        "id": st.session_state.prolific_id,
-        "start": st.session_state.start_time,
-        "timestamp": datetime.now().isoformat(),
-        "type": "extra_query_attempt",
-        "title": user_input[:200],
-        "url": " ",
-    })
-    with st.chat_message("assistant"):
-        st.info("Thanks! For this study, you only need to enter **one** query. Please click **Finish / End Session** (top right) to proceed to the survey.")
+    st.info("Only one query is needed for this study. Click **Finish / End Session** when ready.")
+    return
 
 
 def render_final_survey_page():
@@ -3424,7 +3398,7 @@ def render_final_survey_page():
             "p2_ce",
         )
 
-        st.markdown("**Attention check: Please select two.**")
+        st.markdown("**Please select two.**")
         att_check = st.radio(
             "",
             options=[1, 2, 3, 4, 5, 6, 7],
