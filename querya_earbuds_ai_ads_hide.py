@@ -3106,12 +3106,14 @@ def render_instructions_page():
     st.markdown(_build_instructions_md(is_ai, with_ads))
 
     HOLD_SECONDS = 20
-    if "instructions_start_ts" not in st.session_state:
-        st.session_state.instructions_start_ts = time.time()
+    timer_key = f"instructions_start_ts_v{v}"
+    if timer_key not in st.session_state:
+        st.session_state[timer_key] = time.time()
 
-    elapsed = int(time.time() - st.session_state.instructions_start_ts)
+    instructions_start_ts = st.session_state[timer_key]
+    elapsed = int(time.time() - instructions_start_ts)
     remaining = max(0, HOLD_SECONDS - elapsed)
-    target_ms = int((st.session_state.instructions_start_ts + HOLD_SECONDS) * 1000)
+    target_ms = int((instructions_start_ts + HOLD_SECONDS) * 1000)
     components.html(
         f"""
         <div style="font-family:system-ui, -apple-system, Segoe UI, sans-serif; font-size:14px; color:#475569;">
@@ -3179,6 +3181,31 @@ def _log_ad_toggle(event_type: str):
     })
 
 
+def _render_ad_toggle_control(*, collapsed: bool):
+    action_label = "Show ads" if collapsed else "Hide ads"
+    event_type = "ad_show" if collapsed else "ad_hide"
+    next_state = not collapsed
+    key_prefix = "show" if collapsed else "hide"
+
+    def apply_toggle():
+        st.session_state["ads_collapsed"] = next_state
+        _log_ad_toggle(event_type)
+        st.rerun()
+
+    if hasattr(st, "popover"):
+        with st.popover(action_label):
+            st.caption(
+                "Sponsored recommendations are currently hidden."
+                if collapsed else
+                "Hide the sponsored recommendations box for now."
+            )
+            if st.button(action_label, key=f"{key_prefix}_ads_popover_button"):
+                apply_toggle()
+    else:
+        if st.button(action_label, key=f"{key_prefix}_ads_button"):
+            apply_toggle()
+
+
 def show_advertisements(relevant_products):
     v, _, _, _ = get_variant_flags()
     hideable = v == 3
@@ -3191,10 +3218,7 @@ def show_advertisements(relevant_products):
                 st.markdown("**Querya Advertising**")
                 st.caption("Sponsored product recommendations are hidden.")
             with bar_right:
-                if st.button("Show ads", key="show_ads_button"):
-                    st.session_state["ads_collapsed"] = False
-                    _log_ad_toggle("ad_show")
-                    st.rerun()
+                _render_ad_toggle_control(collapsed=True)
         return
 
     with st.container(border=True):
@@ -3207,10 +3231,8 @@ def show_advertisements(relevant_products):
                 unsafe_allow_html=True,
             )
         with header_right:
-            if hideable and st.button("Hide ads", key="hide_ads_button"):
-                st.session_state["ads_collapsed"] = True
-                _log_ad_toggle("ad_hide")
-                st.rerun()
+            if hideable:
+                _render_ad_toggle_control(collapsed=False)
 
         n, col_count = len(relevant_products), 5
         rows = math.ceil(n / col_count)
