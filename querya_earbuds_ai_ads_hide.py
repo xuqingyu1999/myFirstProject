@@ -3113,7 +3113,6 @@ def render_instructions_page():
     instructions_start_ts = st.session_state[timer_key]
     elapsed = int(time.time() - instructions_start_ts)
     remaining = max(0, HOLD_SECONDS - elapsed)
-    target_ms = int((instructions_start_ts + HOLD_SECONDS) * 1000)
     components.html(
         f"""
         <div style="font-family:system-ui, -apple-system, Segoe UI, sans-serif; font-size:14px; color:#475569;">
@@ -3121,14 +3120,22 @@ def render_instructions_page():
           <span style="margin-left:10px;">Remaining: <strong id="instruction-countdown">{remaining}</strong>s</span>
         </div>
         <script>
-        const target = {target_ms};
+        const initialRemaining = {remaining};
+        const startedAtPerf = performance.now();
         const el = document.getElementById("instruction-countdown");
+        let timer = null;
         function tick() {{
-          const remaining = Math.max(0, Math.ceil((target - Date.now()) / 1000));
-          el.textContent = remaining;
+          const elapsed = Math.floor((performance.now() - startedAtPerf) / 1000);
+          const remaining = Math.max(0, initialRemaining - elapsed);
+          if (el) {{
+            el.textContent = remaining;
+          }}
+          if (remaining <= 0 && timer !== null) {{
+            clearInterval(timer);
+          }}
         }}
         tick();
-        setInterval(tick, 250);
+        timer = setInterval(tick, 250);
         </script>
         """,
         height=36,
@@ -3186,24 +3193,10 @@ def _render_ad_toggle_control(*, collapsed: bool):
     event_type = "ad_show" if collapsed else "ad_hide"
     next_state = not collapsed
     key_prefix = "show" if collapsed else "hide"
-
-    def apply_toggle():
+    if st.button(action_label, key=f"{key_prefix}_ads_button", help=action_label):
         st.session_state["ads_collapsed"] = next_state
         _log_ad_toggle(event_type)
         st.rerun()
-
-    if hasattr(st, "popover"):
-        with st.popover(action_label):
-            st.caption(
-                "Sponsored recommendations are currently hidden."
-                if collapsed else
-                "Hide the sponsored recommendations box for now."
-            )
-            if st.button(action_label, key=f"{key_prefix}_ads_popover_button"):
-                apply_toggle()
-    else:
-        if st.button(action_label, key=f"{key_prefix}_ads_button"):
-            apply_toggle()
 
 
 def show_advertisements(relevant_products):
