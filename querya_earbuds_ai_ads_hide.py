@@ -2403,7 +2403,28 @@ def show_deepseek_recommendation(with_ads: bool):
         return
 
     # Do not render a bottom chat box after the first query; it steals focus and scrolls down.
-    st.info("Only one query is needed for this study. Click **Finish / End Session** when ready.")
+    st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
+    msg_cols = st.columns([8, 1])
+    with msg_cols[0]:
+        extra_input = st.text_input(
+            "",
+            placeholder="Type a message...",
+            key="ai_extra_message",
+            label_visibility="collapsed",
+        )
+    with msg_cols[1]:
+        send_clicked = st.button("Send", key="btn_ai_extra_message")
+
+    if send_clicked and extra_input.strip():
+        save_to_gsheet({
+            "id": st.session_state.prolific_id,
+            "start": st.session_state.start_time,
+            "timestamp": datetime.now().isoformat(),
+            "type": "extra_query_attempt",
+            "title": extra_input.strip()[:200],
+            "url": " ",
+        })
+        st.info("Thanks! For this study, you only need to enter **one** query. Please click **Finish / End Session** (top right) to proceed to the survey.")
     return
 
 
@@ -3317,7 +3338,28 @@ def show_deepseek_recommendation(with_ads: bool):
             st.rerun()
         return
 
-    st.info("Only one query is needed for this study. Click **Finish / End Session** when ready.")
+    st.markdown("<div style='height:0.5rem;'></div>", unsafe_allow_html=True)
+    msg_cols = st.columns([8, 1])
+    with msg_cols[0]:
+        extra_input = st.text_input(
+            "",
+            placeholder="Type a message...",
+            key="ai_extra_message",
+            label_visibility="collapsed",
+        )
+    with msg_cols[1]:
+        send_clicked = st.button("Send", key="btn_ai_extra_message")
+
+    if send_clicked and extra_input.strip():
+        save_to_gsheet({
+            "id": st.session_state.prolific_id,
+            "start": st.session_state.start_time,
+            "timestamp": datetime.now().isoformat(),
+            "type": "extra_query_attempt",
+            "title": extra_input.strip()[:200],
+            "url": " ",
+        })
+        st.info("Thanks! For this study, you only need to enter **one** query. Please click **Finish / End Session** (top right) to proceed to the survey.")
     return
 
 
