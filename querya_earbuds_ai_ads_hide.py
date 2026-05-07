@@ -2871,7 +2871,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_02",
         "title": "SOUNDPEATS Clear Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B0CJV9ZDLK",
-        "image_url": "https://goodio.be/media/cache/sylius_shop_product_original/83/5d/815c6b237f0d266f621ee0d32dfa.webp",
+        "image_url": "https://goodio.be/media/cache/sylius_shop_product_original/55/8d/61eacea39d6fdf3753efd72c5ce2.webp",
         "price": "$29.99",
         "specs": {
             "Brand": "SOUNDPEATS",
@@ -3261,14 +3261,20 @@ def show_advertisements(relevant_products):
                 <style>
                 div[data-testid="stButton"] button[kind="primary"] {
                     font-weight: 700;
-                    border-color: #dc2626;
-                    background-color: #dc2626;
+                    color: #14532d;
+                    border-color: #22c55e;
+                    background-color: #bbf7d0;
+                }
+                div[data-testid="stButton"] button[kind="primary"]:hover {
+                    color: #14532d;
+                    border-color: #16a34a;
+                    background-color: #86efac;
                 }
                 </style>
                 """,
                 unsafe_allow_html=True,
             )
-            bar_label, bar_button, bar_note = st.columns([2.2, 1.2, 4.6])
+            bar_label, bar_button, bar_note = st.columns([1.15, 1.05, 6], gap="small")
             with bar_label:
                 st.markdown(
                     "<span style='background:#e53935; color:#fff; font-size:13px; "
@@ -3287,15 +3293,21 @@ def show_advertisements(relevant_products):
             <style>
             div[data-testid="stButton"] button[kind="primary"] {
                 font-weight: 700;
-                border-color: #dc2626;
-                background-color: #dc2626;
+                color: #14532d;
+                border-color: #22c55e;
+                background-color: #bbf7d0;
+            }
+            div[data-testid="stButton"] button[kind="primary"]:hover {
+                color: #14532d;
+                border-color: #16a34a;
+                background-color: #86efac;
             }
             </style>
             """,
             unsafe_allow_html=True,
         )
         st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
-        header_label, header_button, header_spacer = st.columns([2.2, 1.2, 4.6])
+        header_label, header_button, header_spacer = st.columns([1.15, 1.05, 6], gap="small")
         with header_label:
             st.markdown(
                 "<span style='background:#e53935; color:#fff; font-size:13px; "
@@ -3471,7 +3483,7 @@ def show_deepseek_recommendation(with_ads: bool):
 
 
 def render_final_survey_page():
-    """Final survey for the earbuds experiment: manipulation, communal, attention, demographics."""
+    """Final survey for the earbuds experiment: manipulation, attention, demographics."""
     if st.session_state.get("survey_locked"):
         st.title("Final Survey - Completed")
         st.success("Thanks! Your responses have already been submitted.")
@@ -3497,22 +3509,6 @@ def render_final_survey_page():
     def is_blank(x) -> bool:
         return x is None or (isinstance(x, str) and x.strip() == "")
 
-    def matrix_block(stem: str, items: list[tuple[str, str]], keyprefix: str) -> dict:
-        st.markdown(f"**{stem}**")
-        results = {}
-        for k, q in items:
-            st.markdown(f"**{q}**")
-            results[k] = st.radio(
-                "",
-                options=[1, 2, 3, 4, 5, 6, 7],
-                horizontal=True,
-                index=None,
-                key=f"{keyprefix}_{k}",
-                label_visibility="collapsed",
-            )
-        st.markdown("---")
-        return results
-
     with st.form("final_survey_earbuds_compact"):
         st.markdown("Please complete **all** questions. There is no default selection.")
 
@@ -3537,18 +3533,6 @@ def render_final_survey_page():
                 label_visibility="collapsed",
             )
         st.markdown("---")
-
-        ce_items = [
-            ("ce1", "Communal <-> Commercial"),
-            ("ce2", "Relationship-based <-> Transaction-based"),
-            ("ce3", "Helping-oriented <-> Profit-oriented"),
-            ("ce4", "Care-focused <-> Exchange-focused"),
-        ]
-        communal = matrix_block(
-            "Thinking about AI chatbots overall, how would you characterize the nature of the relationship between users and AI chatbots? Please rate the relationship on the following scales: (1 = closer to the left description, 7 = closer to the right description)",
-            ce_items,
-            "p2_ce",
-        )
 
         st.markdown("**Please select two.**")
         att_check = st.radio(
@@ -3634,7 +3618,6 @@ def render_final_survey_page():
         "sex": sex,
         "education": edu,
         "ethnicity": ethnicity,
-        **communal,
     }
     if show_hide_option_check:
         required["mc_hide_option"] = mc_hide_option
@@ -3660,7 +3643,6 @@ def render_final_survey_page():
             "saw_sponsored_products": mc_ads,
             "saw_hide_option": mc_hide_option if show_hide_option_check else None,
         },
-        "perceived_communal_exchange_orientation": communal,
         "attention_check": att_check,
         "demographics": {
             "age": age_val,
