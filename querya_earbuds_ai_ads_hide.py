@@ -92,14 +92,22 @@ def save_to_gsheet(data) -> bool:
     data = dict(data)
     data.setdefault("variant", st.session_state.get("variant", ""))
 
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(
-        get_credentials_from_secrets(),
-        scopes=[
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-    )
-    client = gspread.authorize(creds)
+    try:
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(
+            get_credentials_from_secrets(),
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ]
+        )
+        client = gspread.authorize(creds)
+    except Exception as e:
+        try:
+            st.session_state["_gsheet_last_error"] = str(e)
+        except Exception:
+            pass
+        return False
+
     last_err = None
     for i in range(3):
         try:
@@ -2863,7 +2871,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_02",
         "title": "SOUNDPEATS Clear Wireless Earbuds",
         "product_url": "https://www.amazon.com/dp/B0CJV9ZDLK",
-        "image_url": "https://m.media-amazon.com/images/I/31eymoaiEIL._AC_CX679_.jpg",
+        "image_url": "https://goodio.be/media/cache/sylius_shop_product_original/83/5d/815c6b237f0d266f621ee0d32dfa.webp",
         "price": "$29.99",
         "specs": {
             "Brand": "SOUNDPEATS",
@@ -2917,7 +2925,7 @@ ORGANIC_EARBUD_PRODUCTS = [
         "id": "earbuds_org_05",
         "title": "Baseus Bowie MA10 Wireless Earbuds",
         "product_url": "https://www.amazon.com/s?k=Baseus+Bowie+MA10+Wireless+Earbuds",
-        "image_url": "https://www.baseus.com/cdn/shop/files/Baseus_Bowie_MA10_TWS_Wireless_Earbuds_1.jpg?v=1682647706",
+        "image_url": "https://baseus.com.au/cdn/shop/files/Baseus_Bowie_MA10_True_Wireless_Earphones_Cluster_Black_10.jpg?v=1736399643",
         "price": "$29.99",
         "specs": {
             "Brand": "Baseus",
@@ -3031,6 +3039,42 @@ SPONSORED_EARBUD_PRODUCTS = [
     },
 ]
 
+
+def _earbud_product_slot(product: dict, slot_id: str, *, sponsored: bool) -> dict:
+    """Copy a product into its current experimental slot without mutating the source stimulus."""
+    copied = dict(product)
+    copied["specs"] = dict(product.get("specs", {}))
+    copied["id"] = slot_id
+    if sponsored:
+        copied["sponsored"] = True
+        if copied.get("description", "").startswith("- Features:"):
+            copied["description"] = copied["description"].replace("- Features:", "- Sponsored features:", 1)
+    else:
+        copied.pop("sponsored", None)
+        if copied.get("description", "").startswith("- Sponsored features:"):
+            copied["description"] = copied["description"].replace("- Sponsored features:", "- Features:", 1)
+    return copied
+
+
+_ORIGINAL_ORGANIC_EARBUD_PRODUCTS = ORGANIC_EARBUD_PRODUCTS
+_ORIGINAL_SPONSORED_EARBUD_PRODUCTS = SPONSORED_EARBUD_PRODUCTS
+
+ORGANIC_EARBUD_PRODUCTS = [
+    _earbud_product_slot(_ORIGINAL_SPONSORED_EARBUD_PRODUCTS[1], "earbuds_org_01", sponsored=False),
+    _earbud_product_slot(_ORIGINAL_ORGANIC_EARBUD_PRODUCTS[1], "earbuds_org_02", sponsored=False),
+    _earbud_product_slot(_ORIGINAL_ORGANIC_EARBUD_PRODUCTS[2], "earbuds_org_03", sponsored=False),
+    _earbud_product_slot(_ORIGINAL_ORGANIC_EARBUD_PRODUCTS[3], "earbuds_org_04", sponsored=False),
+    _earbud_product_slot(_ORIGINAL_SPONSORED_EARBUD_PRODUCTS[2], "earbuds_org_05", sponsored=False),
+]
+
+SPONSORED_EARBUD_PRODUCTS = [
+    _earbud_product_slot(_ORIGINAL_SPONSORED_EARBUD_PRODUCTS[0], "earbuds_ad_01", sponsored=True),
+    _earbud_product_slot(_ORIGINAL_ORGANIC_EARBUD_PRODUCTS[0], "earbuds_ad_02", sponsored=True),
+    _earbud_product_slot(_ORIGINAL_ORGANIC_EARBUD_PRODUCTS[4], "earbuds_ad_03", sponsored=True),
+    _earbud_product_slot(_ORIGINAL_SPONSORED_EARBUD_PRODUCTS[3], "earbuds_ad_04", sponsored=True),
+    _earbud_product_slot(_ORIGINAL_SPONSORED_EARBUD_PRODUCTS[4], "earbuds_ad_05", sponsored=True),
+]
+
 PRODUCT_CATALOG = {p["title"]: p for p in ORGANIC_EARBUD_PRODUCTS}
 PRODUCT_CATALOG.update({p["title"]: p for p in SPONSORED_EARBUD_PRODUCTS})
 
@@ -3079,9 +3123,9 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
         v = 1
     ads_sentence = ""
     if v == 1:
-        ads_sentence = "\n\nThe AI chatbot's output will include advertisements labeled as sponsored content."
+        ads_sentence = "\n\nThe AI chatbot's output may include sponsored product recommendations (advertisements)."
     elif v == 3:
-        ads_sentence = "\n\nThe AI chatbot's output will include advertisements labeled as sponsored content. You may hide or show the advertising box while browsing."
+        ads_sentence = "\n\nThe AI chatbot's output may include sponsored product recommendations (advertisements)."
     body = (
         "Imagine you are shopping for **wireless Bluetooth earbuds**.\n\n"
         "To help you decide which product to purchase, you will use an **AI chatbot** (\"Querya\") "
@@ -3193,7 +3237,13 @@ def _render_ad_toggle_control(*, collapsed: bool):
     event_type = "ad_show" if collapsed else "ad_hide"
     next_state = not collapsed
     key_prefix = "show" if collapsed else "hide"
-    if st.button(action_label, key=f"{key_prefix}_ads_button", help=action_label):
+    if st.button(
+        action_label,
+        key=f"{key_prefix}_ads_button",
+        help=action_label,
+        type="primary",
+        use_container_width=True,
+    ):
         st.session_state["ads_collapsed"] = next_state
         _log_ad_toggle(event_type)
         st.rerun()
@@ -3206,26 +3256,57 @@ def show_advertisements(relevant_products):
 
     if hideable and st.session_state.get("ads_collapsed"):
         with st.container(border=True):
-            bar_left, bar_right = st.columns([5, 1])
-            with bar_left:
-                st.markdown("**Querya Advertising**")
-                st.caption("Sponsored product recommendations are hidden.")
-            with bar_right:
+            st.markdown(
+                """
+                <style>
+                div[data-testid="stButton"] button[kind="primary"] {
+                    font-weight: 700;
+                    border-color: #dc2626;
+                    background-color: #dc2626;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+            bar_label, bar_button, bar_note = st.columns([2.2, 1.2, 4.6])
+            with bar_label:
+                st.markdown(
+                    "<span style='background:#e53935; color:#fff; font-size:13px; "
+                    "padding:4px 10px; border-radius:4px;'>Querya Advertising</span>",
+                    unsafe_allow_html=True,
+                )
+            with bar_button:
                 _render_ad_toggle_control(collapsed=True)
+            with bar_note:
+                st.caption("Sponsored product recommendations are hidden.")
         return
 
     with st.container(border=True):
+        st.markdown(
+            """
+            <style>
+            div[data-testid="stButton"] button[kind="primary"] {
+                font-weight: 700;
+                border-color: #dc2626;
+                background-color: #dc2626;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
         st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
-        header_left, header_right = st.columns([5, 1])
-        with header_left:
+        header_label, header_button, header_spacer = st.columns([2.2, 1.2, 4.6])
+        with header_label:
             st.markdown(
                 "<span style='background:#e53935; color:#fff; font-size:13px; "
                 "padding:4px 10px; border-radius:4px;'>Querya Advertising</span>",
                 unsafe_allow_html=True,
             )
-        with header_right:
+        with header_button:
             if hideable:
                 _render_ad_toggle_control(collapsed=False)
+        with header_spacer:
+            st.write("")
 
         n, col_count = len(relevant_products), 5
         rows = math.ceil(n / col_count)
@@ -3241,6 +3322,17 @@ def show_advertisements(relevant_products):
                             show_image=True,
                             orientation="vertical",
                         )
+
+
+def display_earbud_assistant_reply(content, link_type="organic"):
+    if isinstance(content, list):
+        render_predefined_products(
+            content,
+            PREDEFINED_HEADINGS["wireless earbuds"],
+            link_type=link_type,
+        )
+    else:
+        display_parsed_markdown(content, link_type=link_type)
 
 
 def show_deepseek_recommendation(with_ads: bool):
@@ -3281,7 +3373,7 @@ def show_deepseek_recommendation(with_ads: bool):
                 show_advertisements(st.session_state.current_ads)
                 ads_inserted = True
             with st.chat_message("assistant"):
-                display_parsed_markdown(content, link_type="deepseek")
+                display_earbud_assistant_reply(content, link_type="deepseek")
         else:
             st.chat_message(role).write(content)
 
@@ -3424,16 +3516,7 @@ def render_final_survey_page():
     with st.form("final_survey_earbuds_compact"):
         st.markdown("Please complete **all** questions. There is no default selection.")
 
-        st.markdown("**1. What did you use to seek recommended products in this study?**")
-        mc_tool = st.radio(
-            "",
-            options=["An AI chatbot", "A search engine"],
-            index=None,
-            key="p3_mc_tool",
-            label_visibility="collapsed",
-        )
-
-        st.markdown("**2. Did you see any sponsored products (i.e., advertisements) in the page presenting recommended products in this study?**")
+        st.markdown("**1. Did you see any sponsored products (i.e., advertisements) on the page presenting recommended products in this study?**")
         mc_ads = st.radio(
             "",
             options=["Yes", "No"],
@@ -3441,6 +3524,18 @@ def render_final_survey_page():
             key="p3_mc_ads",
             label_visibility="collapsed",
         )
+
+        mc_hide_option = None
+        show_hide_option_check = v in (1, 3)
+        if show_hide_option_check:
+            st.markdown("**2. Did you see an option that allowed you to hide the sponsored content (i.e., advertisements) on the page presenting recommended products in this study?**")
+            mc_hide_option = st.radio(
+                "",
+                options=["Yes", "No"],
+                index=None,
+                key="p3_mc_hide_option",
+                label_visibility="collapsed",
+            )
         st.markdown("---")
 
         ce_items = [
@@ -3534,7 +3629,6 @@ def render_final_survey_page():
             age_err = "Age must be a whole number."
 
     required = {
-        "mc_tool": mc_tool,
         "mc_ads": mc_ads,
         "attention_check": att_check,
         "sex": sex,
@@ -3542,6 +3636,8 @@ def render_final_survey_page():
         "ethnicity": ethnicity,
         **communal,
     }
+    if show_hide_option_check:
+        required["mc_hide_option"] = mc_hide_option
     missing = [name for name, val in required.items() if is_blank(val)]
 
     if age_err or missing:
@@ -3561,8 +3657,8 @@ def render_final_survey_page():
         "with_ads": with_ads,
         "condition_label": group_label,
         "manipulation_check": {
-            "tool_used": mc_tool,
-            "saw_sponsored": mc_ads,
+            "saw_sponsored_products": mc_ads,
+            "saw_hide_option": mc_hide_option if show_hide_option_check else None,
         },
         "perceived_communal_exchange_orientation": communal,
         "attention_check": att_check,
