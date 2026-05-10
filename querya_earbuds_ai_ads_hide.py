@@ -779,7 +779,6 @@ def render_instructions_page():
 
         Imagine you are shopping for a **fish oil supplement**.  
         To help you decide which product to purchase, you will use an **AI chatbot** (“Querya”) to get some recommended products to consider.
-        **The AI chatbot’s output will include advertisements (sponsored content).**
 
         ---
 
