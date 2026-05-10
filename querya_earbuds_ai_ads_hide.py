@@ -3122,10 +3122,6 @@ def _build_instructions_md(is_ai: bool, with_ads: bool) -> str:
     except Exception:
         v = 1
     ads_sentence = ""
-    if v == 1:
-        ads_sentence = "\n\nThe AI chatbot's output may include sponsored product recommendations (advertisements)."
-    elif v == 3:
-        ads_sentence = "\n\nThe AI chatbot's output may include sponsored product recommendations (advertisements)."
     body = (
         "Imagine you are shopping for **wireless Bluetooth earbuds**.\n\n"
         "To help you decide which product to purchase, you will use an **AI chatbot** (\"Querya\") "
