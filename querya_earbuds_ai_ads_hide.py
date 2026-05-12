@@ -3237,7 +3237,7 @@ def _render_ad_toggle_control(*, collapsed: bool):
         key=f"{key_prefix}_ads_button",
         help=action_label,
         type="primary",
-        use_container_width=True,
+        use_container_width=False,
     ):
         st.session_state["ads_collapsed"] = next_state
         _log_ad_toggle(event_type)
@@ -3255,21 +3255,28 @@ def show_advertisements(relevant_products):
                 """
                 <style>
                 div[data-testid="stButton"] button[kind="primary"] {
-                    font-weight: 700;
-                    color: #14532d;
-                    border-color: #22c55e;
-                    background-color: #bbf7d0;
+                    min-height: 0;
+                    height: auto;
+                    padding: 4px 10px;
+                    border-radius: 4px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    line-height: 1.1;
+                    color: #334155;
+                    border-color: #d1d5db;
+                    background-color: #f1f5f9;
+                    box-shadow: none;
                 }
                 div[data-testid="stButton"] button[kind="primary"]:hover {
-                    color: #14532d;
-                    border-color: #16a34a;
-                    background-color: #86efac;
+                    color: #111827;
+                    border-color: #9ca3af;
+                    background-color: #e5e7eb;
                 }
                 </style>
                 """,
                 unsafe_allow_html=True,
             )
-            bar_label, bar_button, bar_note = st.columns([1.15, 1.05, 6], gap="small")
+            bar_label, bar_button, bar_note = st.columns([1.15, 0.75, 6.3], gap=None)
             with bar_label:
                 st.markdown(
                     "<span style='background:#e53935; color:#fff; font-size:13px; "
@@ -3287,22 +3294,29 @@ def show_advertisements(relevant_products):
             """
             <style>
             div[data-testid="stButton"] button[kind="primary"] {
-                font-weight: 700;
-                color: #14532d;
-                border-color: #22c55e;
-                background-color: #bbf7d0;
+                min-height: 0;
+                height: auto;
+                padding: 4px 10px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1.1;
+                color: #334155;
+                border-color: #d1d5db;
+                background-color: #f1f5f9;
+                box-shadow: none;
             }
             div[data-testid="stButton"] button[kind="primary"]:hover {
-                color: #14532d;
-                border-color: #16a34a;
-                background-color: #86efac;
+                color: #111827;
+                border-color: #9ca3af;
+                background-color: #e5e7eb;
             }
             </style>
             """,
             unsafe_allow_html=True,
         )
         st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
-        header_label, header_button, header_spacer = st.columns([1.15, 1.05, 6], gap="small")
+        header_label, header_button, header_spacer = st.columns([1.15, 0.75, 6.3], gap=None)
         with header_label:
             st.markdown(
                 "<span style='background:#e53935; color:#fff; font-size:13px; "
