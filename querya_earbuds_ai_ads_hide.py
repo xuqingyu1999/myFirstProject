@@ -3262,21 +3262,21 @@ def show_advertisements(relevant_products):
                     font-size: 13px;
                     font-weight: 600;
                     line-height: 1.1;
-                    color: #334155;
-                    border-color: #d1d5db;
-                    background-color: #f1f5f9;
+                    color: #ffffff;
+                    border-color: #111827;
+                    background-color: #111827;
                     box-shadow: none;
                 }
                 div[data-testid="stButton"] button[kind="primary"]:hover {
-                    color: #111827;
-                    border-color: #9ca3af;
-                    background-color: #e5e7eb;
+                    color: #ffffff;
+                    border-color: #000000;
+                    background-color: #000000;
                 }
                 </style>
                 """,
                 unsafe_allow_html=True,
             )
-            bar_label, bar_button, bar_note = st.columns([1.15, 0.75, 6.3], gap=None)
+            bar_label, bar_button, bar_note = st.columns([1.06, 0.75, 6.39], gap=None)
             with bar_label:
                 st.markdown(
                     "<span style='background:#e53935; color:#fff; font-size:13px; "
@@ -3301,22 +3301,22 @@ def show_advertisements(relevant_products):
                 font-size: 13px;
                 font-weight: 600;
                 line-height: 1.1;
-                color: #334155;
-                border-color: #d1d5db;
-                background-color: #f1f5f9;
+                color: #ffffff;
+                border-color: #111827;
+                background-color: #111827;
                 box-shadow: none;
             }
             div[data-testid="stButton"] button[kind="primary"]:hover {
-                color: #111827;
-                border-color: #9ca3af;
-                background-color: #e5e7eb;
+                color: #ffffff;
+                border-color: #000000;
+                background-color: #000000;
             }
             </style>
             """,
             unsafe_allow_html=True,
         )
         st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
-        header_label, header_button, header_spacer = st.columns([1.15, 0.75, 6.3], gap=None)
+        header_label, header_button, header_spacer = st.columns([1.06, 0.75, 6.39], gap=None)
         with header_label:
             st.markdown(
                 "<span style='background:#e53935; color:#fff; font-size:13px; "
