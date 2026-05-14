@@ -13,6 +13,8 @@ import math
 import re
 import time
 import csv
+import queue
+import threading
 import streamlit.components.v1 as components
 import pandas as pd
 # 1) Import streamlit_analytics2
@@ -53,6 +55,7 @@ def get_credentials_from_secrets():
 DEFAULT_SPREADSHEET_AI_ADS = "Querya Earbuds AI Ads"
 DEFAULT_SPREADSHEET_AI_NO_ADS = "Querya Earbuds AI No Ads"
 DEFAULT_SPREADSHEET_AI_ADS_HIDE = "Querya Earbuds AI Ads Hide"
+GSHEET_ROW_FIELDS = ["id", "start", "variant", "timestamp", "type", "title", "url"]
 
 
 def _resolve_spreadsheet_handle(client, *, variant=None):
@@ -87,44 +90,189 @@ def _resolve_spreadsheet_handle(client, *, variant=None):
     return client.open(names.get(v, name_ads))
 
 
-def save_to_gsheet(data) -> bool:
-    # 自动注入 variant（如果还没分配，就留空字符串）
-    data = dict(data)
-    data.setdefault("variant", st.session_state.get("variant", ""))
-
+def _gsheet_runtime_config() -> dict:
+    """Collect Google Sheets routing while still on the Streamlit script thread."""
     try:
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(
-            get_credentials_from_secrets(),
-            scopes=[
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"
-            ]
-        )
-        client = gspread.authorize(creds)
-    except Exception as e:
+        id_ads = st.secrets.get("GSHEET_ID_AI_ADS", None)
+        id_no_ads = st.secrets.get("GSHEET_ID_AI_NO_ADS", None)
+        id_ads_hide = st.secrets.get("GSHEET_ID_AI_ADS_HIDE", None)
+        name_ads = st.secrets.get("GSHEET_NAME_AI_ADS", None)
+        name_no_ads = st.secrets.get("GSHEET_NAME_AI_NO_ADS", None)
+        name_ads_hide = st.secrets.get("GSHEET_NAME_AI_ADS_HIDE", None)
+    except Exception:
+        id_ads = id_no_ads = id_ads_hide = None
+        name_ads = name_no_ads = name_ads_hide = None
+
+    return {
+        "ids": {
+            "1": id_ads or os.getenv("GSHEET_ID_AI_ADS"),
+            "2": id_no_ads or os.getenv("GSHEET_ID_AI_NO_ADS"),
+            "3": id_ads_hide or os.getenv("GSHEET_ID_AI_ADS_HIDE"),
+        },
+        "names": {
+            "1": name_ads or os.getenv("GSHEET_NAME_AI_ADS") or DEFAULT_SPREADSHEET_AI_ADS,
+            "2": name_no_ads or os.getenv("GSHEET_NAME_AI_NO_ADS") or DEFAULT_SPREADSHEET_AI_NO_ADS,
+            "3": name_ads_hide or os.getenv("GSHEET_NAME_AI_ADS_HIDE") or DEFAULT_SPREADSHEET_AI_ADS_HIDE,
+        },
+    }
+
+
+def _normalize_gsheet_data(data: dict) -> dict:
+    row = dict(data)
+    row.setdefault("variant", st.session_state.get("variant", ""))
+    row.setdefault("id", st.session_state.get("prolific_id", "unknown"))
+    row.setdefault("start", st.session_state.get("start_time", datetime.now().isoformat()))
+    row.setdefault("timestamp", datetime.now().isoformat())
+    row.setdefault("url", " ")
+    return row
+
+
+class _GSheetWriter:
+    def __init__(self, creds_dict: dict | None, sheet_config: dict, init_error: str = ""):
+        self.creds_dict = creds_dict
+        self.sheet_config = sheet_config
+        self.init_error = init_error
+        self._client = None
+        self._sheets = {}
+        self._cache_lock = threading.Lock()
+        self._queue = queue.Queue(maxsize=1000)
+        self._worker_lock = threading.Lock()
+        self._worker_started = False
+        self.last_error = ""
+
+    def enqueue(self, row: dict) -> bool:
+        self._ensure_worker()
         try:
-            st.session_state["_gsheet_last_error"] = str(e)
-        except Exception:
-            pass
+            self._queue.put_nowait(dict(row))
+            return True
+        except queue.Full:
+            self.last_error = "Google Sheets logging queue is full."
+            return False
+
+    def write_sync(self, row: dict, *, attempts: int = 3) -> bool:
+        return self._write_with_retries(dict(row), attempts=attempts)
+
+    def _ensure_worker(self):
+        with self._worker_lock:
+            if self._worker_started:
+                return
+            worker = threading.Thread(
+                target=self._worker_loop,
+                name="querya-gsheet-log-worker",
+                daemon=True,
+            )
+            worker.start()
+            self._worker_started = True
+
+    def _worker_loop(self):
+        while True:
+            row = self._queue.get()
+            try:
+                self._write_with_retries(row, attempts=5)
+            finally:
+                self._queue.task_done()
+
+    def _write_with_retries(self, row: dict, *, attempts: int) -> bool:
+        for attempt in range(attempts):
+            try:
+                self._write_once(row)
+                self.last_error = ""
+                return True
+            except Exception as e:
+                self.last_error = str(e)
+                if attempt < attempts - 1:
+                    time.sleep(min(0.25 * (2 ** attempt), 2.0) + random.uniform(0, 0.15))
         return False
 
-    last_err = None
-    for i in range(3):
-        try:
-            spreadsheet = _resolve_spreadsheet_handle(client, variant=data.get("variant"))
-            sheet = spreadsheet.sheet1
-            # 新顺序：id, start, variant, timestamp, type, title, url
-            sheet.append_row([data.get(k, "") for k in ["id", "start", "variant", "timestamp", "type", "title", "url"]])
-            return True
-        except Exception as e:
-            last_err = e
-            time.sleep(0.5)
-    # keep the latest error for debugging (optional)
+    def _write_once(self, row: dict):
+        if self.init_error:
+            raise RuntimeError(self.init_error)
+        if not self.creds_dict:
+            raise RuntimeError("Google credentials are not configured.")
+
+        sheet = self._get_sheet(str(row.get("variant") or "1"))
+        sheet.append_row(
+            [row.get(k, "") for k in GSHEET_ROW_FIELDS],
+            value_input_option="USER_ENTERED",
+        )
+
+    def _get_client(self):
+        with self._cache_lock:
+            if self._client is None:
+                creds = ServiceAccountCredentials.from_json_keyfile_dict(
+                    self.creds_dict,
+                    scopes=[
+                        "https://www.googleapis.com/auth/spreadsheets",
+                        "https://www.googleapis.com/auth/drive",
+                    ],
+                )
+                self._client = gspread.authorize(creds)
+            return self._client
+
+    def _get_sheet(self, variant: str):
+        variant = variant if variant in ("1", "2", "3") else "1"
+        with self._cache_lock:
+            if variant in self._sheets:
+                return self._sheets[variant]
+
+        client = self._get_client()
+        sheet_id = self.sheet_config["ids"].get(variant)
+        sheet_name = self.sheet_config["names"].get(variant) or DEFAULT_SPREADSHEET_AI_ADS
+        spreadsheet = client.open_by_key(sheet_id) if sheet_id else client.open(sheet_name)
+        sheet = spreadsheet.sheet1
+
+        with self._cache_lock:
+            self._sheets[variant] = sheet
+        return sheet
+
+
+@st.cache_resource(show_spinner=False)
+def _get_gsheet_writer() -> _GSheetWriter:
+    sheet_config = _gsheet_runtime_config()
     try:
-        st.session_state["_gsheet_last_error"] = str(last_err) if last_err else ""
-    except Exception:
-        pass
-    return False
+        creds_dict = get_credentials_from_secrets()
+        init_error = ""
+    except Exception as e:
+        creds_dict = None
+        init_error = str(e)
+    return _GSheetWriter(creds_dict, sheet_config, init_error=init_error)
+
+
+def save_to_gsheet(data) -> bool:
+    """Queue normal interaction logs without blocking the participant UI."""
+    row = _normalize_gsheet_data(data)
+    writer = _get_gsheet_writer()
+    ok = writer.enqueue(row)
+    if not ok:
+        try:
+            st.session_state["_gsheet_last_error"] = writer.last_error
+        except Exception:
+            pass
+    return ok
+
+
+def save_survey_to_gsheet(data) -> bool:
+    """Synchronously save final survey rows; completion must wait for this."""
+    row = _normalize_gsheet_data(data)
+    writer = _get_gsheet_writer()
+    ok = writer.write_sync(row, attempts=3)
+    if not ok:
+        try:
+            st.session_state["_gsheet_last_error"] = writer.last_error
+        except Exception:
+            pass
+    return ok
+
+
+def log_event(event_type: str, title: str, url: str = " ") -> bool:
+    return save_to_gsheet({
+        "id": st.session_state.get("prolific_id", "unknown"),
+        "start": st.session_state.get("start_time", datetime.now().isoformat()),
+        "timestamp": datetime.now().isoformat(),
+        "type": event_type,
+        "title": title,
+        "url": url,
+    })
 
 
 # def save_to_gsheet(data) -> bool:
@@ -591,6 +739,16 @@ def gate_desktop_only(width_threshold: int = 900):
             st.caption("**Detected info (debug)**")
             st.json(info)
         st.stop()
+
+
+def _js_device_gate_enabled() -> bool:
+    """Keep the JS device probe opt-in; the CSS overlay handles the normal gate."""
+    try:
+        q = _get_query_params_dict()
+        raw = q.get("js_device_gate", ["0"])[0]
+        return str(raw).strip().lower() in ("1", "true", "yes")
+    except Exception:
+        return False
 
 
 def get_variant_flags():
@@ -1880,14 +2038,7 @@ def open_pending_link():
 def back_to_main():
     """Return from product page and log the click."""
     # 1) write click to Google Sheet
-    save_to_gsheet({
-        "id": st.session_state.prolific_id,
-        "start": st.session_state.start_time,
-        "timestamp": datetime.now().isoformat(),
-        "type": "back",
-        "title": "Back to main",
-        "url": " ",  # no external URL
-    })
+    log_event("back", "Back to main")
     time.sleep(0.5)
     # 2) navigate
     st.session_state.update({"page": "main", "current_product": {}})
@@ -1942,14 +2093,7 @@ def render_product_page():
                                   key=f"qty_demo_{p.get('id', '')}")
             # demo button that only logs to Google Sheet
             if st.button("Add to Cart", key=f"add_demo_{p.get('id', '')}"):
-                save_to_gsheet({
-                    "id": st.session_state.prolific_id,
-                    "start": st.session_state.start_time,
-                    "timestamp": datetime.now().isoformat(),
-                    "type": "add_to_cart_demo",  # <- easy to filter later
-                    "title": p.get("title", ""),
-                    "url": p.get("product_url", " ")
-                })
+                log_event("add_to_cart_demo", p.get("title", ""), p.get("product_url", " "))
                 st.success("Added to cart")
                 # no real cart; do nothing else
 
@@ -2024,14 +2168,7 @@ def show_product_item(p: dict, *, link_type="organic",
 
     label_text = f"Sponsored · {p['title']}" if link_type == "ad" else p["title"]
     if st.button(label_text, key=f"prod_{p['id']}"):
-        save_to_gsheet({
-            "id": st.session_state.prolific_id,
-            "start": st.session_state.start_time,
-            "timestamp": datetime.now().isoformat(),
-            "type": link_type,  # "ad", "organic", "deepseek"
-            "title": p["title"],
-            "url": p.get("product_url", " ")
-        })
+        log_event(link_type, p["title"], p.get("product_url", " "))
         st.session_state.update({"page": "product", "current_product": p})
         st.rerun()
 
@@ -3184,24 +3321,10 @@ def render_instructions_page():
     if next_clicked:
         if remaining > 0:
             st.error(f"Please read the instructions for at least 20 seconds before proceeding. {remaining}s remaining.")
-            save_to_gsheet({
-                "id": st.session_state.get("prolific_id", "unknown"),
-                "start": st.session_state.get("start_time", datetime.now().isoformat()),
-                "timestamp": datetime.now().isoformat(),
-                "type": "instructions_next_too_early",
-                "title": f"{group_label} | ads={with_ads} | remaining={remaining}s",
-                "url": " ",
-            })
+            log_event("instructions_next_too_early", f"{group_label} | ads={with_ads} | remaining={remaining}s")
             return
 
-        save_to_gsheet({
-            "id": st.session_state.get("prolific_id", "unknown"),
-            "start": st.session_state.get("start_time", datetime.now().isoformat()),
-            "timestamp": datetime.now().isoformat(),
-            "type": "enter_experiment",
-            "title": f"{group_label} | ads={with_ads}",
-            "url": " ",
-        })
+        log_event("enter_experiment", f"{group_label} | ads={with_ads}")
         st.session_state.stage = "experiment"
         st.rerun()
 
@@ -3217,14 +3340,7 @@ def get_products_by_query(query: str):
 
 
 def _log_ad_toggle(event_type: str):
-    save_to_gsheet({
-        "id": st.session_state.get("prolific_id", "unknown"),
-        "start": st.session_state.get("start_time", datetime.now().isoformat()),
-        "timestamp": datetime.now().isoformat(),
-        "type": event_type,
-        "title": _condition_label_for_variant(st.session_state.get("variant", 1)),
-        "url": " ",
-    })
+    log_event(event_type, _condition_label_for_variant(st.session_state.get("variant", 1)))
 
 
 def _render_ad_toggle_control(*, collapsed: bool):
@@ -3367,14 +3483,7 @@ def show_deepseek_recommendation(with_ads: bool):
         end_clicked = st.button("Finish / End Session", key=f"end_button_{st.session_state.get('variant', '')}")
 
     if end_clicked:
-        save_to_gsheet({
-            "id": st.session_state.get("prolific_id", "unknown"),
-            "start": st.session_state.get("start_time", datetime.now().isoformat()),
-            "timestamp": datetime.now().isoformat(),
-            "type": "end",
-            "title": "Finish / End Session",
-            "url": " ",
-        })
+        log_event("end", "Finish / End Session")
         st.session_state.stage = "survey"
         st.rerun()
 
@@ -3402,14 +3511,7 @@ def show_deepseek_recommendation(with_ads: bool):
         user_first_input = st.session_state.pending_first_message
         st.session_state.pending_first_message = None
 
-        save_to_gsheet({
-            "id": st.session_state.prolific_id,
-            "start": st.session_state.start_time,
-            "timestamp": datetime.now().isoformat(),
-            "type": "first_query",
-            "title": user_first_input,
-            "url": " ",
-        })
+        log_event("first_query", user_first_input)
 
         prods = get_products_by_query(user_first_input) if with_ads else []
         st.session_state.current_ads = prods
@@ -3479,14 +3581,7 @@ def show_deepseek_recommendation(with_ads: bool):
         send_clicked = st.button("Send", key="btn_ai_extra_message")
 
     if send_clicked and extra_input.strip():
-        save_to_gsheet({
-            "id": st.session_state.prolific_id,
-            "start": st.session_state.start_time,
-            "timestamp": datetime.now().isoformat(),
-            "type": "extra_query_attempt",
-            "title": extra_input.strip()[:200],
-            "url": " ",
-        })
+        log_event("extra_query_attempt", extra_input.strip()[:200])
         st.info("Thanks! For this study, you only need to enter **one** query. Please click **Finish / End Session** (top right) to proceed to the survey.")
     return
 
@@ -3521,9 +3616,10 @@ def render_final_survey_page():
     with st.form("final_survey_earbuds_compact"):
         st.markdown("Please complete **all** questions. There is no default selection.")
 
-        st.markdown("**1. Did you see any sponsored products (i.e., advertisements) on the page presenting recommended products in this study?**")
+        mc_ads_label = "Did you see any sponsored products (i.e., advertisements) on the page presenting recommended products in this study?"
+        st.markdown(f"**1. {mc_ads_label}**")
         mc_ads = st.radio(
-            "",
+            mc_ads_label,
             options=["Yes", "No"],
             index=None,
             key="p3_mc_ads",
@@ -3533,9 +3629,10 @@ def render_final_survey_page():
         mc_hide_option = None
         show_hide_option_check = v in (1, 3)
         if show_hide_option_check:
-            st.markdown("**2. Did you see an option that allowed you to hide the sponsored content (i.e., advertisements) on the page presenting recommended products in this study?**")
+            mc_hide_label = "Did you see an option that allowed you to hide the sponsored content (i.e., advertisements) on the page presenting recommended products in this study?"
+            st.markdown(f"**2. {mc_hide_label}**")
             mc_hide_option = st.radio(
-                "",
+                mc_hide_label,
                 options=["Yes", "No"],
                 index=None,
                 key="p3_mc_hide_option",
@@ -3545,7 +3642,7 @@ def render_final_survey_page():
 
         st.markdown("**Please select two.**")
         att_check = st.radio(
-            "",
+            "Please select two.",
             options=[1, 2, 3, 4, 5, 6, 7],
             horizontal=True,
             index=None,
@@ -3556,7 +3653,7 @@ def render_final_survey_page():
 
         st.markdown("**Your age:**")
         age_str = st.text_input(
-            "",
+            "Your age",
             value="",
             key="p3_demo_age",
             placeholder="Enter an integer between 18 and 99",
@@ -3565,7 +3662,7 @@ def render_final_survey_page():
 
         st.markdown("**Your sex:**")
         sex = st.radio(
-            "",
+            "Your sex",
             options=["Male", "Female"],
             index=None,
             key="p3_demo_sex",
@@ -3574,7 +3671,7 @@ def render_final_survey_page():
 
         st.markdown("**Your educational background:**")
         edu = st.selectbox(
-            "",
+            "Your educational background",
             options=[
                 "Less than high school",
                 "High school graduate",
@@ -3590,7 +3687,7 @@ def render_final_survey_page():
 
         st.markdown("**Your ethnicity:**")
         ethnicity = st.selectbox(
-            "",
+            "Your ethnicity",
             options=[
                 "White",
                 "Black or African American",
@@ -3662,7 +3759,7 @@ def render_final_survey_page():
     }
 
     if not st.session_state.get("survey_locked"):
-        ok = save_to_gsheet({
+        ok = save_survey_to_gsheet({
             "id": st.session_state.prolific_id,
             "start": st.session_state.start_time,
             "timestamp": datetime.now().isoformat(),
@@ -3699,11 +3796,13 @@ def main():
     # Ensure the condition (AI vs Search) is stable for this session (and across refresh, if possible)
     ensure_variant_stable()
     enforce_desktop_only_frontend(strict_width=None)  # visual block, no logging
-    # Try JS-based detection for logging; won't block if bridge fails online
-    try:
-        gate_desktop_only(width_threshold=900)  # from previous message (js-eval version)
-    except Exception:
-        pass
+    # The JS bridge can wait on the browser component and make the page feel stuck.
+    # Keep it available for debugging only; the CSS overlay is the participant-facing gate.
+    if _js_device_gate_enabled():
+        try:
+            gate_desktop_only(width_threshold=900)
+        except Exception:
+            pass
     if st.session_state.stage == "pid":
         st.title("Welcome!")
         pid = st.text_input("Please enter your Prolific ID:")
@@ -3711,22 +3810,8 @@ def main():
             if pid.strip():
                 st.session_state.prolific_id = pid.strip()
                 # 记录
-                save_to_gsheet({
-                    "id": st.session_state.prolific_id,
-                    "start": st.session_state.start_time,
-                    "timestamp": datetime.now().isoformat(),
-                    "type": "pid_entered",
-                    "title": "pid_ok",
-                    "url": " "
-                })
-                save_to_gsheet({
-                    "id": st.session_state.prolific_id,
-                    "start": st.session_state.start_time,
-                    "timestamp": datetime.now().isoformat(),
-                    "type": "variant_assigned",
-                    "title": f"variant={st.session_state.variant}",
-                    "url": " "
-                })
+                log_event("pid_entered", "pid_ok")
+                log_event("variant_assigned", f"variant={st.session_state.variant}")
                 st.session_state.stage = "instructions"
                 st.rerun()
         st.stop()
