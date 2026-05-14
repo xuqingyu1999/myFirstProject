@@ -3736,9 +3736,9 @@ def render_final_survey_page():
             st.error("Please complete all required questions before submitting.")
         return
 
-    if att_check != 2:
-        st.error("Please review the attention check before submitting.")
-        return
+    # if att_check != 2:
+    #     st.error("Please review the attention check before submitting.")
+    #     return
 
     answers = {
         "variant": st.session_state.get("variant"),
