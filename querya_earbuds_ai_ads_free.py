@@ -3345,23 +3345,25 @@ def show_advertisements(relevant_products):
 
     with st.container(border=True):
         st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
-        header_label, header_message, header_spacer = st.columns([1.05, 4.1, 10.85], gap=None)
-        with header_label:
-            st.markdown(
-                "<span style='background:#e53935; color:#fff; font-size:13px; "
-                "padding:4px 10px; border-radius:4px;'>Querya Advertising</span>",
-                unsafe_allow_html=True,
-            )
-        with header_message:
-            if v == 2:
-                st.markdown(
-                    "<span style='display:inline-block; background:#f1f1f1; color:#111; "
-                    "font-size:18px; padding:8px 22px; border-radius:6px;'>"
-                    "Advertising helps keep this AI service free for users.</span>",
-                    unsafe_allow_html=True,
-                )
-        with header_spacer:
-            st.write("")
+        free_service_message = (
+            "<span style='display:inline-flex; align-items:center; background:#f1f1f1; "
+            "color:#111; font-size:16px; line-height:1; padding:8px 16px; "
+            "border-radius:4px; min-height:29px;'>"
+            "Advertising helps keep this AI service free for users.</span>"
+            if v == 2
+            else ""
+        )
+        st.markdown(
+            "<div style='display:flex; align-items:center; gap:10px; flex-wrap:nowrap; "
+            "margin:0 0 12px 0; min-height:32px;'>"
+            "<span style='display:inline-flex; align-items:center; background:#e53935; "
+            "color:#fff; font-size:13px; font-weight:600; line-height:1; "
+            "padding:4px 10px; border-radius:4px; white-space:nowrap;'>"
+            "Querya Advertising</span>"
+            f"{free_service_message}"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
         n, col_count = len(relevant_products), 5
         rows = math.ceil(n / col_count)
@@ -3550,7 +3552,11 @@ def render_final_survey_page():
             "1 = Strongly disagree, 7 = Strongly agree\n\n"
             "The advertising shown in the AI service appeared to support keeping the AI service free for users."
         )
-        st.markdown(f"**2. {mc_free_service_label}**")
+        st.markdown("**2. To what extent do you agree with the following statement?**")
+        st.markdown("**1 = Strongly disagree, 7 = Strongly agree**")
+        st.markdown(
+            "**The advertising shown in the AI service appeared to support keeping the AI service free for users.**"
+        )
         mc_free_service = st.radio(
             mc_free_service_label,
             options=[1, 2, 3, 4, 5, 6, 7],
@@ -3656,10 +3662,6 @@ def render_final_survey_page():
             st.error("Please complete all required questions before submitting.")
         return
 
-    if att_check != 2:
-        st.error("Please review the attention check before submitting.")
-        return
-
     answers = {
         "variant": st.session_state.get("variant"),
         "group": "AI",
@@ -3670,6 +3672,7 @@ def render_final_survey_page():
             "ads_support_free_service": mc_free_service,
         },
         "attention_check": att_check,
+        "attention_check_passed": att_check == 2,
         "demographics": {
             "age": age_val,
             "sex": sex,
@@ -3679,23 +3682,7 @@ def render_final_survey_page():
     }
 
     if not st.session_state.get("survey_locked"):
-        ok = save_survey_to_gsheet({
-            "id": st.session_state.prolific_id,
-            "start": st.session_state.start_time,
-            "timestamp": datetime.now().isoformat(),
-            "type": "survey",
-            "title": "final_survey",
-            "url": json.dumps(answers, ensure_ascii=False),
-        })
-        if not ok:
-            st.error(
-                "We could not record your responses due to a temporary server/network error. "
-                "Please click **Submit** again. (Do not close this tab yet.)"
-            )
-            err_txt = st.session_state.get("_gsheet_last_error", "")
-            if err_txt:
-                st.caption(f"Debug info: {err_txt}")
-            return
+        log_event("survey", "final_survey", json.dumps(answers, ensure_ascii=False))
 
     target = get_completion_url()
     st.session_state["survey_locked"] = True
