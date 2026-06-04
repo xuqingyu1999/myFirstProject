@@ -3365,12 +3365,17 @@ def _log_ad_feedback(choice: str, relevant_products):
     log_event("ad_feedback", choice, json.dumps(payload, ensure_ascii=False))
 
 
+def _record_ad_feedback(choice: str, relevant_products):
+    st.session_state["ad_feedback_choice"] = choice
+    _log_ad_feedback(choice, relevant_products)
+
+
 def show_advertisements(relevant_products):
     v, _, _, _ = get_variant_flags()
 
     with st.container(border=True):
         st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
-        header_cols = st.columns([1.25, 5], gap="small", vertical_alignment="center")
+        header_cols = st.columns([1.25, 3.15, 2.6], gap="small", vertical_alignment="top")
         with header_cols[0]:
             st.markdown(
                 "<span style='display:inline-flex; align-items:center; background:#e53935; "
@@ -3380,32 +3385,37 @@ def show_advertisements(relevant_products):
                 unsafe_allow_html=True,
             )
 
-        with header_cols[1]:
+        with header_cols[2]:
             feedback_key = "ad_feedback_choice"
             if v == 2 and st.session_state.get(feedback_key):
                 st.markdown(
-                    "<span style='font-size:14px; color:#166534;'>"
-                    "Thanks. Your feedback helps us better match recommendations to your needs.</span>",
+                    "<div style='text-align:right; font-size:14px; color:#166534; line-height:1.25;'>"
+                    "Thanks. Your feedback helps us better match recommendations to your needs.</div>",
                     unsafe_allow_html=True,
                 )
             elif v == 2:
-                prompt_cols = st.columns([2.5, 0.55, 0.55, 3], gap="small", vertical_alignment="center")
-                with prompt_cols[0]:
-                    st.markdown(
-                        "<span style='font-size:14px; color:#111827;'>"
-                        "Did these recommendations meet your needs?</span>",
-                        unsafe_allow_html=True,
-                    )
+                st.markdown(
+                    "<div style='text-align:right; font-size:14px; color:#111827; line-height:1.2; "
+                    "margin-bottom:-0.35rem;'>Did these recommendations meet your needs?</div>",
+                    unsafe_allow_html=True,
+                )
+                prompt_cols = st.columns([1.25, 0.55, 0.55], gap="small", vertical_alignment="center")
                 with prompt_cols[1]:
-                    if st.button("👍 Yes", key="ad_feedback_yes", type="tertiary"):
-                        st.session_state[feedback_key] = "yes"
-                        _log_ad_feedback("yes", relevant_products)
-                        st.rerun()
+                    st.button(
+                        "👍 Yes",
+                        key="ad_feedback_yes",
+                        type="tertiary",
+                        on_click=_record_ad_feedback,
+                        args=("yes", relevant_products),
+                    )
                 with prompt_cols[2]:
-                    if st.button("👎 No", key="ad_feedback_no", type="tertiary"):
-                        st.session_state[feedback_key] = "no"
-                        _log_ad_feedback("no", relevant_products)
-                        st.rerun()
+                    st.button(
+                        "👎 No",
+                        key="ad_feedback_no",
+                        type="tertiary",
+                        on_click=_record_ad_feedback,
+                        args=("no", relevant_products),
+                    )
 
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
