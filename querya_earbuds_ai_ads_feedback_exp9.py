@@ -3370,31 +3370,44 @@ def show_advertisements(relevant_products):
 
     with st.container(border=True):
         st.markdown("<div id='ad-box-anchor'></div>", unsafe_allow_html=True)
-        st.markdown(
-            "<div style='display:flex; align-items:center; gap:10px; flex-wrap:nowrap; "
-            "margin:0 0 12px 0; min-height:32px;'>"
-            "<span style='display:inline-flex; align-items:center; background:#e53935; "
-            "color:#fff; font-size:13px; font-weight:600; line-height:1; "
-            "padding:4px 10px; border-radius:4px; white-space:nowrap;'>"
-            "Querya Advertising</span>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
+        header_cols = st.columns([1.25, 5], gap="small", vertical_alignment="center")
+        with header_cols[0]:
+            st.markdown(
+                "<span style='display:inline-flex; align-items:center; background:#e53935; "
+                "color:#fff; font-size:13px; font-weight:600; line-height:1; "
+                "padding:4px 10px; border-radius:4px; white-space:nowrap;'>"
+                "Querya Advertising</span>",
+                unsafe_allow_html=True,
+            )
 
-        if v == 2:
-            st.markdown("**Did these recommendations meet your needs?**")
-            feedback_cols = st.columns([0.75, 0.75, 5], gap="small")
+        with header_cols[1]:
             feedback_key = "ad_feedback_choice"
-            with feedback_cols[0]:
-                if st.button("👍 Yes", key="ad_feedback_yes"):
-                    st.session_state[feedback_key] = "yes"
-                    _log_ad_feedback("yes", relevant_products)
-            with feedback_cols[1]:
-                if st.button("👎 No", key="ad_feedback_no"):
-                    st.session_state[feedback_key] = "no"
-                    _log_ad_feedback("no", relevant_products)
-            if st.session_state.get(feedback_key):
-                st.success("Thanks. Your feedback helps us better match recommendations to your needs.")
+            if v == 2 and st.session_state.get(feedback_key):
+                st.markdown(
+                    "<span style='font-size:14px; color:#166534;'>"
+                    "Thanks. Your feedback helps us better match recommendations to your needs.</span>",
+                    unsafe_allow_html=True,
+                )
+            elif v == 2:
+                prompt_cols = st.columns([2.5, 0.55, 0.55, 3], gap="small", vertical_alignment="center")
+                with prompt_cols[0]:
+                    st.markdown(
+                        "<span style='font-size:14px; color:#111827;'>"
+                        "Did these recommendations meet your needs?</span>",
+                        unsafe_allow_html=True,
+                    )
+                with prompt_cols[1]:
+                    if st.button("👍 Yes", key="ad_feedback_yes", type="tertiary"):
+                        st.session_state[feedback_key] = "yes"
+                        _log_ad_feedback("yes", relevant_products)
+                        st.rerun()
+                with prompt_cols[2]:
+                    if st.button("👎 No", key="ad_feedback_no", type="tertiary"):
+                        st.session_state[feedback_key] = "no"
+                        _log_ad_feedback("no", relevant_products)
+                        st.rerun()
+
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
         n, col_count = len(relevant_products), 5
         rows = math.ceil(n / col_count)
