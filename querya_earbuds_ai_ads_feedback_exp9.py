@@ -508,6 +508,7 @@ div.stButton > button[title="ad-feedback"]{
     border:1px solid #d0d7de !important;
     border-radius:6px !important;
     padding:2px 8px !important;
+    width:70px !important;
     min-height:26px !important;
     height:26px !important;
     font-size:13px !important;
@@ -516,6 +517,9 @@ div.stButton > button[title="ad-feedback"]{
     text-decoration:none !important;
     box-shadow:none !important;
     white-space:nowrap !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
 }
 div.stButton > button[title="ad-feedback"]:hover{
     background:#f6f8fa !important;
@@ -3415,17 +3419,17 @@ def show_advertisements(relevant_products):
             feedback_key = "ad_feedback_choice"
             if v == 2 and st.session_state.get(feedback_key):
                 st.markdown(
-                    "<div style='text-align:right; font-size:14px; color:#166534; line-height:1.25;'>"
+                    "<div style='text-align:center; font-size:14px; color:#166534; line-height:1.25;'>"
                     "Thanks. Your feedback helps us better match recommendations to your needs.</div>",
                     unsafe_allow_html=True,
                 )
             elif v == 2:
                 st.markdown(
-                    "<div style='text-align:right; font-size:14px; color:#111827; line-height:1.2; "
-                    "margin-bottom:-0.25rem;'>Did these recommendations meet your needs?</div>",
+                    "<div style='text-align:center; font-size:14px; color:#111827; line-height:1.2; "
+                    "margin-bottom:0.15rem;'>Did these recommendations meet your needs?</div>",
                     unsafe_allow_html=True,
                 )
-                prompt_cols = st.columns([1, 0.6, 0.6, 1], gap="small", vertical_alignment="center")
+                prompt_cols = st.columns([1, 0.72, 0.72, 1], gap="small", vertical_alignment="center")
                 with prompt_cols[1]:
                     st.button(
                         "👍 Yes",
