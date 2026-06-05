@@ -3436,7 +3436,7 @@ def show_advertisements(relevant_products):
                 )
             elif v == 3:
                 st.markdown(
-                    "<div style='text-align:center; font-size:14px; color:#111827; line-height:1.2; "
+                    "<div style='text-align:center; font-size:14.5px; font-weight:700; color:#111827; line-height:1.2; "
                     "margin-bottom:0.15rem;'>Did these recommendations meet your needs?</div>",
                     unsafe_allow_html=True,
                 )
@@ -3642,24 +3642,15 @@ def render_final_survey_page():
             label_visibility="collapsed",
         )
 
-        mc_feedback_responsiveness = None
+        mc_saw_feedback_option = None
         if with_ads:
-            mc_feedback_responsiveness_label = (
-                "To what extent do you agree with the following statement?\n\n"
-                "1 = Strongly disagree, 7 = Strongly agree\n\n"
-                "The AI service appeared responsive to user feedback about the recommendations."
-            )
-            st.markdown("**2. To what extent do you agree with the following statement?**")
-            st.markdown("**1 = Strongly disagree, 7 = Strongly agree**")
-            st.markdown(
-                "**The AI service appeared responsive to user feedback about the recommendations.**"
-            )
-            mc_feedback_responsiveness = st.radio(
-                mc_feedback_responsiveness_label,
-                options=[1, 2, 3, 4, 5, 6, 7],
-                horizontal=True,
+            mc_saw_feedback_option_label = "Did you see an option to provide feedback about whether the recommendations met your needs?"
+            st.markdown(f"**2. {mc_saw_feedback_option_label}**")
+            mc_saw_feedback_option = st.radio(
+                mc_saw_feedback_option_label,
+                options=["Yes", "No"],
                 index=None,
-                key="p3_mc_feedback_responsiveness",
+                key="p3_mc_saw_feedback_option",
                 label_visibility="collapsed",
             )
             st.markdown("---")
@@ -3750,7 +3741,7 @@ def render_final_survey_page():
         "ethnicity": ethnicity,
     }
     if with_ads:
-        required["feedback_responsiveness"] = mc_feedback_responsiveness
+        required["saw_feedback_option"] = mc_saw_feedback_option
     missing = [name for name, val in required.items() if is_blank(val)]
 
     if age_err or missing:
@@ -3767,7 +3758,7 @@ def render_final_survey_page():
         "condition_label": group_label,
         "manipulation_check": {
             "saw_sponsored_products": mc_ads,
-            "feedback_responsiveness": mc_feedback_responsiveness,
+            "saw_feedback_option": mc_saw_feedback_option,
         },
         "attention_check": att_check,
         "attention_check_passed": att_check == 2,
