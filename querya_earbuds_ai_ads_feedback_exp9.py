@@ -52,6 +52,7 @@ def get_credentials_from_secrets():
     return creds_dict
 
 
+DEFAULT_SPREADSHEET_AI_NO_ADS = "Querya Earbuds AI No Ads EXP9"
 DEFAULT_SPREADSHEET_AI_ADS = "Querya Earbuds AI Ads EXP9"
 DEFAULT_SPREADSHEET_AI_ADS_FEEDBACK = "Querya Earbuds AI Feedback Ads EXP9"
 GSHEET_ROW_FIELDS = ["id", "start", "variant", "timestamp", "type", "title", "url"]
@@ -63,22 +64,26 @@ def _resolve_spreadsheet_handle(client, *, variant=None):
     v = str(v or "1")
 
     try:
+        id_no_ads = st.secrets.get("GSHEET_ID_AI_NO_ADS_EXP9", None)
         id_ads = st.secrets.get("GSHEET_ID_AI_ADS_EXP9", None)
         id_ads_feedback = st.secrets.get("GSHEET_ID_AI_ADS_FEEDBACK_EXP9", None)
+        name_no_ads = st.secrets.get("GSHEET_NAME_AI_NO_ADS_EXP9", None)
         name_ads = st.secrets.get("GSHEET_NAME_AI_ADS_EXP9", None)
         name_ads_feedback = st.secrets.get("GSHEET_NAME_AI_ADS_FEEDBACK_EXP9", None)
     except Exception:
-        id_ads = id_ads_feedback = None
-        name_ads = name_ads_feedback = None
+        id_no_ads = id_ads = id_ads_feedback = None
+        name_no_ads = name_ads = name_ads_feedback = None
 
+    id_no_ads = id_no_ads or os.getenv("GSHEET_ID_AI_NO_ADS_EXP9")
     id_ads = id_ads or os.getenv("GSHEET_ID_AI_ADS_EXP9")
     id_ads_feedback = id_ads_feedback or os.getenv("GSHEET_ID_AI_ADS_FEEDBACK_EXP9")
 
+    name_no_ads = name_no_ads or os.getenv("GSHEET_NAME_AI_NO_ADS_EXP9") or DEFAULT_SPREADSHEET_AI_NO_ADS
     name_ads = name_ads or os.getenv("GSHEET_NAME_AI_ADS_EXP9") or DEFAULT_SPREADSHEET_AI_ADS
     name_ads_feedback = name_ads_feedback or os.getenv("GSHEET_NAME_AI_ADS_FEEDBACK_EXP9") or DEFAULT_SPREADSHEET_AI_ADS_FEEDBACK
 
-    ids = {"1": id_ads, "2": id_ads_feedback}
-    names = {"1": name_ads, "2": name_ads_feedback}
+    ids = {"1": id_no_ads, "2": id_ads, "3": id_ads_feedback}
+    names = {"1": name_no_ads, "2": name_ads, "3": name_ads_feedback}
 
     if ids.get(v):
         return client.open_by_key(ids[v])
@@ -88,22 +93,26 @@ def _resolve_spreadsheet_handle(client, *, variant=None):
 def _gsheet_runtime_config() -> dict:
     """Collect Google Sheets routing while still on the Streamlit script thread."""
     try:
+        id_no_ads = st.secrets.get("GSHEET_ID_AI_NO_ADS_EXP9", None)
         id_ads = st.secrets.get("GSHEET_ID_AI_ADS_EXP9", None)
         id_ads_feedback = st.secrets.get("GSHEET_ID_AI_ADS_FEEDBACK_EXP9", None)
+        name_no_ads = st.secrets.get("GSHEET_NAME_AI_NO_ADS_EXP9", None)
         name_ads = st.secrets.get("GSHEET_NAME_AI_ADS_EXP9", None)
         name_ads_feedback = st.secrets.get("GSHEET_NAME_AI_ADS_FEEDBACK_EXP9", None)
     except Exception:
-        id_ads = id_ads_feedback = None
-        name_ads = name_ads_feedback = None
+        id_no_ads = id_ads = id_ads_feedback = None
+        name_no_ads = name_ads = name_ads_feedback = None
 
     return {
         "ids": {
-            "1": id_ads or os.getenv("GSHEET_ID_AI_ADS_EXP9"),
-            "2": id_ads_feedback or os.getenv("GSHEET_ID_AI_ADS_FEEDBACK_EXP9"),
+            "1": id_no_ads or os.getenv("GSHEET_ID_AI_NO_ADS_EXP9"),
+            "2": id_ads or os.getenv("GSHEET_ID_AI_ADS_EXP9"),
+            "3": id_ads_feedback or os.getenv("GSHEET_ID_AI_ADS_FEEDBACK_EXP9"),
         },
         "names": {
-            "1": name_ads or os.getenv("GSHEET_NAME_AI_ADS_EXP9") or DEFAULT_SPREADSHEET_AI_ADS,
-            "2": name_ads_feedback or os.getenv("GSHEET_NAME_AI_ADS_FEEDBACK_EXP9") or DEFAULT_SPREADSHEET_AI_ADS_FEEDBACK,
+            "1": name_no_ads or os.getenv("GSHEET_NAME_AI_NO_ADS_EXP9") or DEFAULT_SPREADSHEET_AI_NO_ADS,
+            "2": name_ads or os.getenv("GSHEET_NAME_AI_ADS_EXP9") or DEFAULT_SPREADSHEET_AI_ADS,
+            "3": name_ads_feedback or os.getenv("GSHEET_NAME_AI_ADS_FEEDBACK_EXP9") or DEFAULT_SPREADSHEET_AI_ADS_FEEDBACK,
         },
     }
 
@@ -201,14 +210,14 @@ class _GSheetWriter:
             return self._client
 
     def _get_sheet(self, variant: str):
-        variant = variant if variant in ("1", "2") else "1"
+        variant = variant if variant in ("1", "2", "3") else "1"
         with self._cache_lock:
             if variant in self._sheets:
                 return self._sheets[variant]
 
         client = self._get_client()
         sheet_id = self.sheet_config["ids"].get(variant)
-        sheet_name = self.sheet_config["names"].get(variant) or DEFAULT_SPREADSHEET_AI_ADS
+        sheet_name = self.sheet_config["names"].get(variant) or DEFAULT_SPREADSHEET_AI_NO_ADS
         spreadsheet = client.open_by_key(sheet_id) if sheet_id else client.open(sheet_name)
         sheet = spreadsheet.sheet1
 
@@ -364,7 +373,7 @@ def ensure_variant_stable():
         if k in qp and qp[k]:
             v_param = str(qp[k][0]).strip()
             break
-    desired = int(v_param) if v_param in ("1", "2") else None
+    desired = int(v_param) if v_param in ("1", "2", "3") else None
 
     if desired is not None:
         st.session_state["variant"] = desired
@@ -380,7 +389,7 @@ def ensure_variant_stable():
             fixed = int(st.session_state["_variant_fixed"])
         except Exception:
             fixed = None
-        if fixed in (1, 2):
+        if fixed in (1, 2, 3):
             st.session_state["variant"] = fixed
             if qp.get("cond", [None])[0] != str(fixed):
                 qp["cond"] = [str(fixed)]
@@ -393,8 +402,8 @@ def ensure_variant_stable():
         current_variant = int(st.session_state.get("variant"))
     except Exception:
         current_variant = None
-    if current_variant not in (1, 2):
-        st.session_state["variant"] = random.randint(1, 2)
+    if current_variant not in (1, 2, 3):
+        st.session_state["variant"] = random.randint(1, 3)
 
     try:
         st.session_state["_variant_fixed"] = int(st.session_state["variant"])
@@ -796,13 +805,14 @@ def get_variant_flags():
         v = int(v)
     except Exception:
         v = 1
-    if v not in (1, 2):
+    if v not in (1, 2, 3):
         v = 1
     is_ai = True
-    with_ads = True
+    with_ads = v in (2, 3)
     group_label = {
-        1: "AI Assistant with Ads",
-        2: "AI Assistant with Feedback-Responsive Ads",
+        1: "AI Assistant without Ads",
+        2: "AI Assistant with Ads",
+        3: "AI Assistant with Feedback-Responsive Ads",
     }.get(v, "AI Assistant")
     return v, is_ai, with_ads, group_label
 
@@ -3284,8 +3294,9 @@ def _is_earbuds_query(user_text: str) -> bool:
 
 def _condition_label_for_variant(v: int) -> str:
     return {
-        1: "AI Assistant with Ads",
-        2: "AI Assistant with Feedback-Responsive Ads",
+        1: "AI Assistant without Ads",
+        2: "AI Assistant with Ads",
+        3: "AI Assistant with Feedback-Responsive Ads",
     }.get(v, "AI Assistant")
 
 
@@ -3417,13 +3428,13 @@ def show_advertisements(relevant_products):
 
         with header_cols[2]:
             feedback_key = "ad_feedback_choice"
-            if v == 2 and st.session_state.get(feedback_key):
+            if v == 3 and st.session_state.get(feedback_key):
                 st.markdown(
                     "<div style='text-align:center; font-size:14px; color:#166534; line-height:1.25;'>"
                     "Thanks. Your feedback helps us better match recommendations to your needs.</div>",
                     unsafe_allow_html=True,
                 )
-            elif v == 2:
+            elif v == 3:
                 st.markdown(
                     "<div style='text-align:center; font-size:14px; color:#111827; line-height:1.2; "
                     "margin-bottom:0.15rem;'>Did these recommendations meet your needs?</div>",
@@ -3631,25 +3642,27 @@ def render_final_survey_page():
             label_visibility="collapsed",
         )
 
-        mc_needs_responsiveness_label = (
-            "To what extent do you agree with the following statement?\n\n"
-            "1 = Strongly disagree, 7 = Strongly agree\n\n"
-            "The AI service appeared to care about whether the recommendations met my needs."
-        )
-        st.markdown("**2. To what extent do you agree with the following statement?**")
-        st.markdown("**1 = Strongly disagree, 7 = Strongly agree**")
-        st.markdown(
-            "**The AI service appeared to care about whether the recommendations met my needs.**"
-        )
-        mc_needs_responsiveness = st.radio(
-            mc_needs_responsiveness_label,
-            options=[1, 2, 3, 4, 5, 6, 7],
-            horizontal=True,
-            index=None,
-            key="p3_mc_recommendations_needs_responsiveness",
-            label_visibility="collapsed",
-        )
-        st.markdown("---")
+        mc_feedback_responsiveness = None
+        if with_ads:
+            mc_feedback_responsiveness_label = (
+                "To what extent do you agree with the following statement?\n\n"
+                "1 = Strongly disagree, 7 = Strongly agree\n\n"
+                "The AI service appeared responsive to user feedback about the recommendations."
+            )
+            st.markdown("**2. To what extent do you agree with the following statement?**")
+            st.markdown("**1 = Strongly disagree, 7 = Strongly agree**")
+            st.markdown(
+                "**The AI service appeared responsive to user feedback about the recommendations.**"
+            )
+            mc_feedback_responsiveness = st.radio(
+                mc_feedback_responsiveness_label,
+                options=[1, 2, 3, 4, 5, 6, 7],
+                horizontal=True,
+                index=None,
+                key="p3_mc_feedback_responsiveness",
+                label_visibility="collapsed",
+            )
+            st.markdown("---")
 
         st.markdown("**Please select two.**")
         att_check = st.radio(
@@ -3731,12 +3744,13 @@ def render_final_survey_page():
 
     required = {
         "mc_ads": mc_ads,
-        "recommendations_needs_responsiveness": mc_needs_responsiveness,
         "attention_check": att_check,
         "sex": sex,
         "education": edu,
         "ethnicity": ethnicity,
     }
+    if with_ads:
+        required["feedback_responsiveness"] = mc_feedback_responsiveness
     missing = [name for name, val in required.items() if is_blank(val)]
 
     if age_err or missing:
@@ -3753,7 +3767,7 @@ def render_final_survey_page():
         "condition_label": group_label,
         "manipulation_check": {
             "saw_sponsored_products": mc_ads,
-            "recommendations_needs_responsiveness": mc_needs_responsiveness,
+            "feedback_responsiveness": mc_feedback_responsiveness,
         },
         "attention_check": att_check,
         "attention_check_passed": att_check == 2,
