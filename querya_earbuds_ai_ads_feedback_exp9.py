@@ -501,6 +501,32 @@ div.stButton > button[title="chip"]:hover{
 """
 st.markdown(SUGGESTION_CHIPS_CSS, unsafe_allow_html=True)
 
+AD_FEEDBACK_BUTTONS_CSS = """
+<style>
+div.stButton > button[title="ad-feedback"]{
+    background:#ffffff !important;
+    border:1px solid #d0d7de !important;
+    border-radius:6px !important;
+    padding:2px 8px !important;
+    min-height:26px !important;
+    height:26px !important;
+    font-size:13px !important;
+    line-height:1 !important;
+    color:#111827 !important;
+    text-decoration:none !important;
+    box-shadow:none !important;
+    white-space:nowrap !important;
+}
+div.stButton > button[title="ad-feedback"]:hover{
+    background:#f6f8fa !important;
+    border-color:#afb8c1 !important;
+    color:#111827 !important;
+    text-decoration:none !important;
+}
+</style>
+"""
+st.markdown(AD_FEEDBACK_BUTTONS_CSS, unsafe_allow_html=True)
+
 SURVEY_FONTS_CSS = """
 <style>
 /* Make radio/select labels & options match body size */
@@ -3396,15 +3422,15 @@ def show_advertisements(relevant_products):
             elif v == 2:
                 st.markdown(
                     "<div style='text-align:right; font-size:14px; color:#111827; line-height:1.2; "
-                    "margin-bottom:-0.35rem;'>Did these recommendations meet your needs?</div>",
+                    "margin-bottom:-0.25rem;'>Did these recommendations meet your needs?</div>",
                     unsafe_allow_html=True,
                 )
-                prompt_cols = st.columns([1.25, 0.55, 0.55], gap="small", vertical_alignment="center")
+                prompt_cols = st.columns([1, 0.6, 0.6, 1], gap="small", vertical_alignment="center")
                 with prompt_cols[1]:
                     st.button(
                         "👍 Yes",
                         key="ad_feedback_yes",
-                        type="tertiary",
+                        help="ad-feedback",
                         on_click=_record_ad_feedback,
                         args=("yes", relevant_products),
                     )
@@ -3412,7 +3438,7 @@ def show_advertisements(relevant_products):
                     st.button(
                         "👎 No",
                         key="ad_feedback_no",
-                        type="tertiary",
+                        help="ad-feedback",
                         on_click=_record_ad_feedback,
                         args=("no", relevant_products),
                     )
