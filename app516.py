@@ -1171,9 +1171,9 @@ PRODUCT_CATALOG = {
         "page_description": "**About this item**\n- 1 180 mg total Omega-3 (EPA 665 mg / DHA 445 mg) per soft-gel for heart, brain and vision.\n- Provides 1 000 IU vitamin D3 to support bones, muscles and immunity.\n- r-Triglyceride form for superior absorption; lactose- & gluten-free, burp-free orange flavor.\n- Ultra-pure, Friend-of-the-Sea-certified fish oil in beef-gelatin-free blister packs."
     },
 
-    "Now Foods Krill 1000": {
+    "Now Foods Ultra Omega-3": {
         "id": "fish_03",
-        "title": "Now Foods Krill 1000",
+        "title": "Now Foods Ultra Omega-3",
         "price": "$41.51",
         "specs": {
             "Brand": "Now Foods",
@@ -1184,7 +1184,7 @@ PRODUCT_CATALOG = {
             "Item Weight": "375 g"
         },
         "product_url": "https://www.amazon.sg/Supplements-Neptune-Strength-Phospholipid-Bound-Softgels/dp/B06XDNT7TQ/",
-        "image_url": "https://m.media-amazon.com/images/I/71auVVCYKnL._AC_SX679_.jpg",
+        "image_url": "https://cloudinary.images-iherb.com/image/upload/f_auto,q_auto:eco/images/now/now01662/g/97.jpg",
         "description": "- Features: Great value (EPA 500 mg + DHA 250 mg per soft-gel); IFOS certified; suitable for long-term, everyday supplementation.\n- Ideal for: General health maintenance, budget-conscious consumers, and daily nutritional support.",
         "page_description": "**About this item**\n- CARDIOVASCULAR SUPPORT – 600 mg EPA & 300 mg DHA per enteric-coated soft-gel.\n- MOLECULARLY DISTILLED for purity; tested free of PCBs, dioxins & heavy metals.\n- ENTERIC COATING reduces nausea and fishy aftertaste.\n- NON-GMO, Kosher and GMP-quality assured by the family-owned NOW® brand since 1968."
     },
@@ -1276,7 +1276,7 @@ KEYWORD_RESPONSES = {
     "fish oil": [PRODUCT_CATALOG[k] for k in (
         "Nordic Naturals Ultimate Omega",
         "WHC UnoCardio 1000",
-        "Now Foods Krill 1000",
+        "Now Foods Ultra Omega-3",
         "Blackmores OMEGA BRAIN Caps 60s",
         "Möller’s Norwegian Cod-Liver Oil"
         # ... eight more keys in display order
@@ -2113,7 +2113,7 @@ def do_fake_google_search(query):
             },
             {
                 "id": "fish_03",
-                "title": "Now Foods Krill 1000",
+                "title": "Now Foods Ultra Omega-3",
                 "product_url": "https://www.amazon.com/NOW-Supplements-Molecularly-Distilled-Softgels/dp/B0BGQR8KSG/ref=sr_1_1?crid=1WK5FQS4N6VT9&dib=eyJ2IjoiMSJ9.sczFj7G5tzaluW3utIDJFvN3vRVXIKN8OW6iAI1rL8RiGXrbNcV75KmT0QHEw_-mrjN9Y2Z_QXZcyi9A3KwDB5TpToVICSiFPa7RnnItgqpDWW7DzU2ECbX73MLiBO0nOBcQe4If9EV_QeFtgmERZF360mEcTJ3ZfaxrOKNzI8A.dUyPZz9HZwZJIqkDLMtL5snAfj0y8Ayu3PNq8Ugt-WU&dib_tag=se&keywords=Now%2BFoods%2BUltra%2BOmega-3&qid=1747669011&sprefix=now%2Bfoods%2Bultra%2Bomega-3%2Caps%2C677&sr=8-1&th=1",
                 "site": "www.iherb.com",
                 "price": "$41.51",
