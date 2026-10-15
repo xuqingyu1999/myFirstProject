@@ -1171,9 +1171,9 @@ PRODUCT_CATALOG = {
         "page_description": "**About this item**\n- 1 180 mg total Omega-3 (EPA 665 mg / DHA 445 mg) per soft-gel for heart, brain and vision.\n- Provides 1 000 IU vitamin D3 to support bones, muscles and immunity.\n- r-Triglyceride form for superior absorption; lactose- & gluten-free, burp-free orange flavor.\n- Ultra-pure, Friend-of-the-Sea-certified fish oil in beef-gelatin-free blister packs."
     },
 
-    "Now Foods Ultra Omega-3": {
+    "Now Foods Krill 1000": {
         "id": "fish_03",
-        "title": "Now Foods Ultra Omega-3",
+        "title": "Now Foods Krill 1000",
         "price": "$41.51",
         "specs": {
             "Brand": "Now Foods",
@@ -1276,7 +1276,7 @@ KEYWORD_RESPONSES = {
     "fish oil": [PRODUCT_CATALOG[k] for k in (
         "Nordic Naturals Ultimate Omega",
         "WHC UnoCardio 1000",
-        "Now Foods Ultra Omega-3",
+        "Now Foods Krill 1000",
         "Blackmores OMEGA BRAIN Caps 60s",
         "Möller’s Norwegian Cod-Liver Oil"
         # ... eight more keys in display order
@@ -2113,7 +2113,7 @@ def do_fake_google_search(query):
             },
             {
                 "id": "fish_03",
-                "title": "Now Foods Ultra Omega-3",
+                "title": "Now Foods Krill 1000",
                 "product_url": "https://www.amazon.com/NOW-Supplements-Molecularly-Distilled-Softgels/dp/B0BGQR8KSG/ref=sr_1_1?crid=1WK5FQS4N6VT9&dib=eyJ2IjoiMSJ9.sczFj7G5tzaluW3utIDJFvN3vRVXIKN8OW6iAI1rL8RiGXrbNcV75KmT0QHEw_-mrjN9Y2Z_QXZcyi9A3KwDB5TpToVICSiFPa7RnnItgqpDWW7DzU2ECbX73MLiBO0nOBcQe4If9EV_QeFtgmERZF360mEcTJ3ZfaxrOKNzI8A.dUyPZz9HZwZJIqkDLMtL5snAfj0y8Ayu3PNq8Ugt-WU&dib_tag=se&keywords=Now%2BFoods%2BUltra%2BOmega-3&qid=1747669011&sprefix=now%2Bfoods%2Bultra%2Bomega-3%2Caps%2C677&sr=8-1&th=1",
                 "site": "www.iherb.com",
                 "price": "$41.51",
